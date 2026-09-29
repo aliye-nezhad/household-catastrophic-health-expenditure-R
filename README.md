@@ -77,13 +77,23 @@ The R script performs:
 household-catastrophic-health-expenditure-R/
 ├── README.md
 ├── LICENSE
+│
 ├── code/
 │   └── Health_Expenditure_Analysis.R
+│
 ├── data/
-│   └── README.md
+│   ├── README.md
+│   └── raw/
+│       ├── README.md
+│       ├── R93.rar
+│       ├── U93.rar
+│       ├── R93P3S06.rds
+│       └── U93P3S06.rds
+│
 └── outputs/
     ├── figures/
     │   └── Figure1_CHE_income_quintile.png
+    │
     └── tables/
         ├── summary_statistics.xlsx
         ├── regression_results.docx
