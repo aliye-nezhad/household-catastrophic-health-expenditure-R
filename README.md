@@ -75,8 +75,10 @@ The R script performs:
 
 ```text
 household-catastrophic-health-expenditure-R/
+│
 ├── README.md
 ├── LICENSE
+├── .gitignore
 │
 ├── code/
 │   └── Health_Expenditure_Analysis.R
