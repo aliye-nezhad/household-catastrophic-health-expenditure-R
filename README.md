@@ -144,11 +144,11 @@ This project estimates conditional associations and is presented as an applied m
 
 Important limitations include:
 
-- catastrophic health expenditure estimates depend on methodological choices such as thresholds and subsistence expenditure definitions;
-- household survey measures depend on sampling and reporting procedures;
-- alternative specifications may produce different numerical estimates;
-- survey-weighted models account for sampling design but do not eliminate all sources of bias; and
-- the analysis does not identify causal effects of socioeconomic characteristics on health expenditure outcomes.
+- catastrophic health expenditure estimates depend on methodological choices such as thresholds and subsistence expenditure definitions
+- household survey measures depend on sampling and reporting procedures
+- alternative specifications may produce different numerical estimates
+- survey-weighted models account for sampling design but do not eliminate all sources of bias
+- the analysis does not identify causal effects of socioeconomic characteristics on health expenditure outcomes
 
 ## Skills Demonstrated
 
