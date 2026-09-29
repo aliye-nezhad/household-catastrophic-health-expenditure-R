@@ -57,19 +57,19 @@ The baseline specification uses the 40% threshold following Xu et al. (2003). Ad
 
 The R script performs:
 
-- household survey-data import and validation;
-- construction of health expenditure measures;
-- calculation of subsistence expenditure and capacity to pay;
-- creation of catastrophic health expenditure indicators;
-- survey-design declaration using sampling weights;
-- weighted descriptive analysis;
-- survey-weighted logistic regression estimation;
-- odds-ratio calculation and regression output export;
-- urban household robustness analysis;
-- large household robustness analysis;
-- province fixed-effects estimation;
-- income-residence interaction analysis; and
-- alternative CHE threshold sensitivity analysis.
+- household survey-data import and validation
+- construction of health expenditure measures
+- calculation of subsistence expenditure and capacity to pay
+- creation of catastrophic health expenditure indicators
+- survey-design declaration using sampling weights
+- weighted descriptive analysis
+- survey-weighted logistic regression estimation
+- odds-ratio calculation and regression output export
+- urban household robustness analysis
+- large household robustness analysis
+- province fixed-effects estimation
+- income-residence interaction analysis
+- alternative CHE threshold sensitivity analysis
 
 ## Repository Structure
 
@@ -109,15 +109,15 @@ household-catastrophic-health-expenditure-R/
 
 The code requires:
 
-- R 4.2 or newer;
-- dplyr;
-- readxl;
-- labelled;
-- survey;
-- ggplot2;
-- modelsummary;
-- RODBC;
-- openxlsx.
+- R 4.2 or newer
+- dplyr
+- readxl
+- labelled
+- survey
+- ggplot2
+- modelsummary
+- RODBC
+- openxlsx
 
 The workflow requires access to the original household survey files and an appropriate Access database driver for importing the source data.
 
@@ -152,13 +152,13 @@ Important limitations include:
 
 ## Skills Demonstrated
 
-- R data management and validation;
-- household survey data construction;
-- applied microeconometric analysis;
-- survey-weighted regression methods;
-- subgroup, robustness, and sensitivity analysis;
-- reproducible output generation; and
-- transparent documentation of empirical limitations.
+- R data management and validation
+- household survey data construction
+- applied microeconometric analysis
+- survey-weighted regression methods
+- subgroup, robustness, and sensitivity analysis
+- reproducible output generation
+- transparent documentation of empirical limitations
 
 ## Author
 
