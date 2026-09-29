@@ -83,7 +83,13 @@ household-catastrophic-health-expenditure-R/
 │   └── README.md
 └── outputs/
     ├── figures/
+    │   └── Figure1_CHE_income_quintile.png
     └── tables/
+        ├── Table1_Descriptive_Statistics.html
+        ├── Table2_Main_Logistic_Regression.csv
+        ├── marginal_effects.csv
+        ├── Table5_Province_FE.csv
+        └── Table_CHE_threshold_sensitivity.csv
 ```
 
 ## Requirements
