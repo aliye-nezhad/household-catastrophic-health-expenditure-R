@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository implements a reproducible R workflow for constructing household-level catastrophic health expenditure measures from Iranian household survey data, following the Xu et al. (2003) methodology, estimating survey-weighted logistic regression models, conducting subgroup analyses, and exporting analytical results in a reviewer-friendly structure.
+This repository implements a reproducible R workflow for constructing household-level catastrophic health expenditure measures from Iranian household survey data, implementing the Xu et al. (2003) methodology, estimating survey-weighted logistic regression models, conducting subgroup analyses, and exporting tables and figures in a reviewer-friendly structure.
 
 The project is presented as an applied microeconometrics and R coding sample. Its regression estimates describe conditional associations between household characteristics and catastrophic health expenditure and should not be interpreted as causal effects.
 
@@ -17,22 +17,22 @@ The workflow uses household survey data containing household demographic charact
 | Variable | Description | Role |
 | --- | --- | --- |
 | `catastrophic_health_expenditure` | Catastrophic health expenditure indicator | Dependent variable |
-| `health` | Household out-of-pocket health expenditure measure | Health expenditure measure |
+| `OOP` | Household out-of-pocket health expenditure | Health expenditure measure |
 | `CTP` | Household capacity to pay | CHE denominator |
-| `rank_income` | Household economic position indicator | Main socioeconomic variable |
-| `RU` | Urban/rural residence classification | Household characteristic |
-| `hsize` | Household size | Household characteristic |
-| `Age` | Age of household head | Demographic characteristic |
+| `income_rank` | Household economic position indicator | Main socioeconomic variable |
+| `residence_type` | Urban/rural residence classification | Household characteristic |
+| `household_size` | Number of household members | Household characteristic |
+| `age` | Age of household head | Demographic characteristic |
 | `gender` | Gender of household head | Demographic characteristic |
 | `literacy` | Literacy status of household head | Demographic characteristic |
 
 The analytical dataset is constructed through:
 
-- importing household survey tables and supporting files;
+- importing household survey tables;
 - validating and cleaning variables;
 - aggregating household health expenditure;
 - merging household-level information; and
-- constructing demographic, socioeconomic, and expenditure indicators.
+- constructing economic and demographic indicators.
 
 ## Catastrophic Health Expenditure Construction
 
@@ -42,27 +42,36 @@ Capacity to pay is defined as:
 
 ```text
 CTP = Total Expenditure - Subsistence Expenditure
+```
 
-Subsistence expenditure is estimated using the food-share approach with household-size adjustment.
 The baseline catastrophic health expenditure indicator is:
+
+```text
 CHE = 1 if OOP / CTP >= 40%
 CHE = 0 otherwise
+```
 
 The 40% threshold is used as the baseline specification following Xu et al. (2003). Alternative thresholds can be implemented as additional sensitivity analyses.
-Empirical Workflow
+
+## Empirical Workflow
+
 The R script performs:
+
 - household survey-data import and validation;
-- construction of household health expenditure measures;
+- construction of health expenditure measures;
 - calculation of subsistence expenditure and capacity to pay;
 - creation of catastrophic health expenditure indicators;
 - survey-design declaration using sampling weights;
 - weighted descriptive analysis;
 - survey-weighted logistic regression estimation;
 - odds-ratio calculation and regression output export;
-- urban-household subgroup analysis;
-- large-household subgroup analysis; and
+- urban household subgroup analysis;
+- large household subgroup analysis; and
 - reproducible output generation.
-Repository Structure
+
+## Repository Structure
+
+```text
 household-catastrophic-health-expenditure-R/
 ├── README.md
 ├── LICENSE
@@ -77,9 +86,12 @@ household-catastrophic-health-expenditure-R/
         ├── Table1_Descriptive_Statistics.html
         ├── Table2_Main_Logistic_Regression.csv
         └── regression_outputs/
+```
 
-Requirements
+## Requirements
+
 The code requires:
+
 - R 4.2 or newer;
 - dplyr;
 - readxl;
@@ -87,38 +99,50 @@ The code requires:
 - survey;
 - ggplot2;
 - modelsummary.
-Reproduction
+
+## Reproduction
+
 Run the analysis from the repository root:
+
+```r
 source("code/Health_Expenditure_Analysis.R")
+```
 
-The script constructs the analytical dataset, estimates survey-weighted models, and exports regression results and summary outputs.
-Output Guide
-Location	Contents
-outputs/figures/	Analytical figures generated from the workflow
-outputs/tables/	Descriptive statistics, regression results, and exported analytical summaries
+The script generates the analytical results and exports tables and figures to the output folders.
 
+## Output Guide
 
-Interpretation and Limitations
+| Location | Contents |
+| --- | --- |
+| `outputs/figures/` | Catastrophic health expenditure prevalence by income quintile |
+| `outputs/tables/` | Descriptive statistics, regression results, subgroup analyses, and exported analytical results |
+
+## Interpretation and Limitations
+
 This project estimates conditional associations and is presented as an applied microeconometrics coding sample rather than a causal research design.
+
 Important limitations include:
+
 - catastrophic health expenditure estimates depend on methodological choices such as thresholds and subsistence expenditure definitions;
 - household survey measures depend on sampling and reporting procedures;
 - alternative specifications may produce different numerical estimates;
 - survey-weighted models account for sampling design but do not eliminate all sources of bias; and
 - the analysis does not identify causal effects of socioeconomic characteristics on health expenditure outcomes.
-Skills Demonstrated
+
+## Skills Demonstrated
+
 - R data management and validation;
 - household survey data construction;
 - applied microeconometric analysis;
 - survey-weighted regression methods;
-- subgroup and robustness analysis;
+- robustness and sensitivity analysis;
 - reproducible output generation; and
 - transparent documentation of empirical limitations.
-Author
+
+## Author
+
 Aliye Nezhad
-License
+
+## License
+
 The code and documentation are released under the MIT License.
-
----
-
-One additional recommendation: **before uploading to GitHub, make the output folder in the README exactly match your repository.** The
