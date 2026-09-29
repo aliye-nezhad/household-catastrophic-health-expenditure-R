@@ -1,4 +1,4 @@
-# Determinants of Household Catastrophic Health Expenditure
+# Determinants of Household Catastrophic Health Expenditure 
 
 ## Overview
 
