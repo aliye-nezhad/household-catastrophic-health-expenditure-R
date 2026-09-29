@@ -1,4 +1,4 @@
-# Household Catastrophic Health Expenditure Analysis
+# Determinants of Household Catastrophic Health Expenditure
 
 ## Overview
 
@@ -104,6 +104,7 @@ The code requires:
 - survey;
 - ggplot2;
 - modelsummary;
+- RODBC;
 - openxlsx.
 
 The workflow requires access to the original household survey files and an appropriate Access database driver for importing the source data.
