@@ -6,7 +6,7 @@ This repository implements a reproducible R workflow for constructing
 household-level catastrophic health expenditure measures from Iranian
 household survey data, implementing the Xu et al. (2003) methodology,
 estimating survey-weighted logistic regression models, conducting
-robustness analyses, and exporting tables and figures in a
+subgroup analyses, and exporting tables and figures in a
 reviewer-friendly structure.
 
 The project is presented as an applied microeconometrics and R coding
@@ -83,8 +83,9 @@ CHE = 1 if OOP / CTP >= 40%
 CHE = 0 otherwise
 ```
 
-Alternative thresholds of 30%, 40%, and 50% are evaluated as sensitivity
-checks.
+The 40% threshold is used as the baseline specification following Xu et
+al. (2003). Alternative thresholds can be implemented as additional
+sensitivity analyses.
 
 ## Empirical Workflow
 
@@ -97,12 +98,10 @@ The R script performs:
 -   survey-design declaration using sampling weights;
 -   weighted descriptive analysis;
 -   survey-weighted logistic regression estimation;
--   marginal effects calculation;
--   urban household robustness analysis;
--   large household robustness analysis;
--   province fixed-effects estimation;
--   income-rural interaction analysis; and
--   alternative CHE threshold sensitivity analysis.
+-   odds-ratio calculation and regression output export;
+-   urban household subgroup analysis;
+-   large household subgroup analysis; and
+-   reproducible output generation.
 
 ## Repository Structure
 
@@ -120,9 +119,7 @@ household-catastrophic-health-expenditure-R/
     └── tables/
         ├── Table1_Descriptive_Statistics.html
         ├── Table2_Main_Logistic_Regression.csv
-        ├── marginal_effects.csv
-        ├── Table5_Province_FE.csv
-        └── Table_CHE_threshold_sensitivity.csv
+        └── regression_outputs/
 ```
 
 ## Requirements
@@ -157,15 +154,14 @@ figures to the output folders.
                                       prevalence by income quintile
 
   `outputs/tables/`                   Descriptive statistics, regression
-                                      results, marginal effects,
-                                      robustness specifications, and
-                                      threshold sensitivity results
+                                      results, subgroup analyses, and
+                                      exported analytical results
   -----------------------------------------------------------------------
 
 ## Interpretation and Limitations
 
 This project estimates conditional associations and is presented as an
-applied microeconomics coding sample rather than a causal research
+applied microeconometrics coding sample rather than a causal research
 design.
 
 Important limitations include:
