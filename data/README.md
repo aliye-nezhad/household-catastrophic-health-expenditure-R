@@ -21,10 +21,10 @@ dataset.
 The R workflow imports and processes these files to construct the household-level
 analytical dataset used for:
 
-- catastrophic health expenditure measurement;
-- capacity-to-pay calculation;
-- survey-weighted regression analysis; and
-- robustness and sensitivity analyses.
+- catastrophic health expenditure measurement
+- capacity-to-pay calculation
+- survey-weighted regression analysis
+- robustness and sensitivity analyses
 
 ## Reproducibility Note
 
