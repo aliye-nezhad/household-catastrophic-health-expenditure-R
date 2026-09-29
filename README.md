@@ -28,11 +28,11 @@ The workflow uses household survey data containing household demographic charact
 
 The analytical dataset is constructed through:
 
-- importing household survey tables and supporting files;
-- validating and cleaning variables;
-- aggregating household health expenditure;
-- merging household-level information; and
-- constructing demographic, socioeconomic, and expenditure indicators.
+- importing household survey tables and supporting files
+- validating and cleaning variables
+- aggregating household health expenditure
+- merging household-level information 
+- constructing demographic, socioeconomic, and expenditure indicators
 
 ## Catastrophic Health Expenditure Construction
 
