@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository implements a reproducible R workflow for constructing household-level catastrophic health expenditure measures from Iranian household survey data, implementing the Xu et al. (2003) methodology, estimating survey-weighted logistic regression models, conducting subgroup analyses, and exporting tables and figures in a reviewer-friendly structure.
+This repository implements a reproducible R workflow for constructing household-level catastrophic health expenditure measures from Iranian household survey data, following the Xu et al. (2003) methodology, estimating survey-weighted logistic regression models, conducting subgroup and robustness analyses, and exporting tables and figures in a reviewer-friendly structure.
 
 The project is presented as an applied microeconometrics and R coding sample. Its regression estimates describe conditional associations between household characteristics and catastrophic health expenditure and should not be interpreted as causal effects.
 
@@ -17,8 +17,8 @@ The workflow uses household survey data containing household demographic charact
 | Variable | Description | Role |
 | --- | --- | --- |
 | `catastrophic_health_expenditure` | Catastrophic health expenditure indicator | Dependent variable |
-| `OOP` | Household out-of-pocket health expenditure | Health expenditure measure |
-| `CTP` | Household capacity to pay | CHE denominator |
+| `annual_health_expenditure` | Household annual out-of-pocket health expenditure | Health expenditure measure |
+| `capacity_to_pay` | Household capacity to pay after subsistence needs | CHE denominator |
 | `income_rank` | Household economic position indicator | Main socioeconomic variable |
 | `residence_type` | Urban/rural residence classification | Household characteristic |
 | `household_size` | Number of household members | Household characteristic |
@@ -28,11 +28,11 @@ The workflow uses household survey data containing household demographic charact
 
 The analytical dataset is constructed through:
 
-- importing household survey tables;
+- importing household survey tables and supporting files;
 - validating and cleaning variables;
 - aggregating household health expenditure;
 - merging household-level information; and
-- constructing economic and demographic indicators.
+- constructing demographic, socioeconomic, and expenditure indicators.
 
 ## Catastrophic Health Expenditure Construction
 
@@ -51,7 +51,7 @@ CHE = 1 if OOP / CTP >= 40%
 CHE = 0 otherwise
 ```
 
-The 40% threshold is used as the baseline specification following Xu et al. (2003). Alternative thresholds can be implemented as additional sensitivity analyses.
+The baseline specification uses the 40% threshold following Xu et al. (2003). Additional threshold specifications of 30% and 50% are estimated as sensitivity analyses.
 
 ## Empirical Workflow
 
@@ -65,9 +65,11 @@ The R script performs:
 - weighted descriptive analysis;
 - survey-weighted logistic regression estimation;
 - odds-ratio calculation and regression output export;
-- urban household subgroup analysis;
-- large household subgroup analysis; and
-- reproducible output generation.
+- urban household robustness analysis;
+- large household robustness analysis;
+- province fixed-effects estimation;
+- income-residence interaction analysis; and
+- alternative CHE threshold sensitivity analysis.
 
 ## Repository Structure
 
@@ -83,9 +85,12 @@ household-catastrophic-health-expenditure-R/
     ├── figures/
     │   └── Figure1_CHE_income_quintile.png
     └── tables/
-        ├── Table1_Descriptive_Statistics.html
-        ├── Table2_Main_Logistic_Regression.csv
-        └── regression_outputs/
+        ├── summary_statistics.xlsx
+        ├── regression_results.docx
+        ├── model_comparison.docx
+        ├── CHE_by_income_quintile.csv
+        ├── CHE_final_regression_table.docx
+        └── CHE_threshold_robustness.docx
 ```
 
 ## Requirements
@@ -98,7 +103,11 @@ The code requires:
 - labelled;
 - survey;
 - ggplot2;
-- modelsummary.
+- modelsummary;
+- RODBC;
+- openxlsx.
+
+The workflow requires access to the original household survey files and an appropriate Access database driver for importing the source data.
 
 ## Reproduction
 
@@ -108,14 +117,14 @@ Run the analysis from the repository root:
 source("code/Health_Expenditure_Analysis.R")
 ```
 
-The script generates the analytical results and exports tables and figures to the output folders.
+The script constructs the analytical dataset, estimates survey-weighted models, performs robustness and sensitivity analyses, and exports tables and figures to the output folders.
 
 ## Output Guide
 
 | Location | Contents |
 | --- | --- |
 | `outputs/figures/` | Catastrophic health expenditure prevalence by income quintile |
-| `outputs/tables/` | Descriptive statistics, regression results, subgroup analyses, and exported analytical results |
+| `outputs/tables/` | Descriptive statistics, regression results, subgroup analyses, province specifications, interaction models, and CHE threshold sensitivity results |
 
 ## Interpretation and Limitations
 
@@ -135,7 +144,7 @@ Important limitations include:
 - household survey data construction;
 - applied microeconometric analysis;
 - survey-weighted regression methods;
-- robustness and sensitivity analysis;
+- subgroup, robustness, and sensitivity analysis;
 - reproducible output generation; and
 - transparent documentation of empirical limitations.
 
