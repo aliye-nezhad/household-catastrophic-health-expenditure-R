@@ -11,13 +11,25 @@ dataset.
 
 | File | Description |
 | --- | --- |
-| `R93.rar` | Raw household survey data file |
-| `U93.rar` | Raw household survey data file |
+| `R93.rar` | Raw household survey data archive |
+| `U93.rar` | Raw household survey data archive |
 | `R93P3S06.rds` | Household expenditure-related data component |
 | `U93P3S06.rds` | Household expenditure-related data component |
-| `93.ldb` | Microsoft Access database lock file associated with the source database |
 
 ## Data Processing
 
-The main analysis script:
+The R workflow imports and processes these files to construct the household-level
+analytical dataset used for:
 
+- catastrophic health expenditure measurement;
+- capacity-to-pay calculation;
+- survey-weighted regression analysis; and
+- robustness and sensitivity analyses.
+
+## Reproducibility Note
+
+The raw files are preserved with their original filenames because the analysis
+workflow expects these file names during import.
+
+The processed analytical dataset and generated outputs are created by the R
+workflow and are stored separately from the raw input files.
