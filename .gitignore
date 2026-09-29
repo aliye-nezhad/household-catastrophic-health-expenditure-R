@@ -1,0 +1,25 @@
+# R session files
+.Rhistory
+.RData
+.Ruserdata
+
+# RStudio project files
+.Rproj.user/
+*.Rproj
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary output files
+*.html
+*.pdf
+
+# Large temporary databases
+*.mdb
+*.accdb
