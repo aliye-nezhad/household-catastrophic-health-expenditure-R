@@ -98,9 +98,9 @@ household-catastrophic-health-expenditure-R/
         ├── summary_statistics.xlsx
         ├── regression_results.docx
         ├── model_comparison.docx
-        ├── CHE_by_income_quintile.csv
         ├── CHE_final_regression_table.docx
-        └── CHE_threshold_robustness.docx
+        ├── Table_CHE_by_income_quintile.csv
+        └── marginal_effects.csv
 ```
 
 ## Requirements
