@@ -1,177 +1,179 @@
-# Determinants of Household Catastrophic Health Expenditure 
+# Determinants of Household Catastrophic Health Expenditure
 
 ## Overview
 
-This repository implements a reproducible R workflow for constructing household-level catastrophic health expenditure measures from Iranian household survey data, following the Xu et al. (2003) methodology, estimating survey-weighted logistic regression models, conducting subgroup and robustness analyses, and exporting tables and figures in a reviewer-friendly structure.
+This repository contains an R workflow for constructing household-level catastrophic health expenditure (CHE) measures from Iranian household survey data, estimating survey-weighted logistic regression models, conducting subgroup and threshold-sensitivity analyses, and exporting tables and figures.
 
-The project is presented as an applied microeconometrics and R coding sample. Its regression estimates describe conditional associations between household characteristics and catastrophic health expenditure and should not be interpreted as causal effects.
+The project is an applied microeconometrics and R coding sample. The regression estimates describe conditional associations; they should not be interpreted as causal effects.
 
-## Research Question
+## Research question
 
 How are household socioeconomic and demographic characteristics associated with catastrophic health expenditure among Iranian households?
 
 ## Data
 
-The workflow uses household survey data containing household demographic characteristics, expenditure information, health-related out-of-pocket expenditure, and sampling weights.
+The workflow combines household demographic and expenditure information with health-expenditure records and sampling weights.
 
 | Variable | Description | Role |
 | --- | --- | --- |
-| `catastrophic_health_expenditure` | Catastrophic health expenditure indicator | Dependent variable |
-| `annual_health_expenditure` | Household annual out-of-pocket health expenditure | Health expenditure measure |
-| `capacity_to_pay` | Household capacity to pay after subsistence needs | CHE denominator |
-| `income_rank` | Household economic position indicator | Main socioeconomic variable |
-| `residence_type` | Urban/rural residence classification | Household characteristic |
+| `catastrophic_health_expenditure` | CHE indicator based on the baseline threshold | Dependent variable |
+| `annual_health_expenditure` | Annualized household out-of-pocket health expenditure | CHE numerator |
+| `capacity_to_pay` | Household expenditure remaining after subsistence needs | CHE denominator |
+| `income_rank` | Household economic-position indicator | Main socioeconomic variable |
+| `residence_type` | Urban/rural classification | Household characteristic |
 | `household_size` | Number of household members | Household characteristic |
 | `age` | Age of household head | Demographic characteristic |
 | `gender` | Gender of household head | Demographic characteristic |
 | `literacy` | Literacy status of household head | Demographic characteristic |
 
-The analytical dataset is constructed through:
+### Input files
 
-- importing household survey tables and supporting files
-- validating and cleaning variables
-- aggregating household health expenditure
-- merging household-level information 
-- constructing demographic, socioeconomic, and expenditure indicators
+The committed source files are stored in `data/raw/`:
 
-## Catastrophic Health Expenditure Construction
+- `R93P3S06.rds` and `U93P3S06.rds`: household health-expenditure components used directly by the R script.
+- `R93.rar` and `U93.rar`: archives containing the rural and urban household Excel files (`R93.xls` and `U93.xls`).
+- `93.rar`: archive containing the original Access database. It is retained as a source archive but is not required by the current R workflow.
 
-The workflow follows the catastrophic health expenditure methodology developed by Xu et al. (2003).
+The Excel files are extracted at runtime into `data/processed/`. This is a generated directory and is excluded from version control.
 
-Capacity to pay is defined as:
+## Catastrophic health expenditure construction
 
-```text
-CTP = Total Expenditure - Subsistence Expenditure
-```
+The script documents its implementation as following the Xu et al. (2003) framework.
 
-The baseline catastrophic health expenditure indicator is:
+Capacity to pay is defined as total household expenditure after subsistence needs. The baseline CHE indicator is:
 
 ```text
-CHE = 1 if OOP / CTP >= 40%
+CHE = 1 if annual out-of-pocket health expenditure / capacity to pay >= 0.40
 CHE = 0 otherwise
 ```
 
-The baseline specification uses the 40% threshold following Xu et al. (2003). Additional threshold specifications of 30% and 50% are estimated as sensitivity analyses.
+The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds.
 
-## Empirical Workflow
+The implementation uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are methodological choices in the current script and should be checked against the intended source specification before substantive interpretation.
 
-The R script performs:
+## Empirical workflow
 
-- household survey-data import and validation
-- construction of health expenditure measures
-- calculation of subsistence expenditure and capacity to pay
-- creation of catastrophic health expenditure indicators
-- survey-design declaration using sampling weights
-- weighted descriptive analysis
-- survey-weighted logistic regression estimation
-- odds-ratio calculation and regression output export
-- urban household robustness analysis
-- large household robustness analysis
-- province fixed-effects estimation
-- income-residence interaction analysis
-- alternative CHE threshold sensitivity analysis
+The R script:
 
-## Repository Structure
+1. Imports the committed RDS health-expenditure components.
+2. Aggregates health expenditure to the household level.
+3. Reads the rural and urban household files extracted from the RAR archives.
+4. Merges the household and health-expenditure information.
+5. Constructs demographic, socioeconomic, geographic, and expenditure variables.
+6. Calculates subsistence expenditure, capacity to pay, and CHE indicators.
+7. Declares a survey design using the household sampling weights.
+8. Estimates survey-weighted logistic regressions.
+9. Conducts urban-household and large-household subgroup analyses.
+10. Estimates province fixed-effects and income-residence interaction specifications.
+11. Estimates alternative CHE thresholds and exports tables and figures.
+
+## Repository structure
 
 ```text
 household-catastrophic-health-expenditure-R/
-│
-├── README.md
-├── LICENSE
+├── .github/
+│   └── workflows/
+│       └── r-reproducibility.yml
 ├── .gitignore
-│
+├── LICENSE
+├── README.md
 ├── code/
 │   └── Health_Expenditure_Analysis.R
-│
 ├── data/
 │   ├── README.md
 │   └── raw/
-│       ├── README.md
-│       ├── 93.rar  
+│       ├── 93.rar
 │       ├── R93.rar
 │       ├── U93.rar
 │       ├── R93P3S06.rds
 │       └── U93P3S06.rds
-│
 └── outputs/
     ├── figures/
-    │   └── Figure1_CHE_income_quintile.png
-    │
+    │   └── figure1_income_quintile_CHE.png
     └── tables/
         ├── summary_statistics.xlsx
         ├── regression_results.docx
         ├── model_comparison.docx
         ├── CHE_final_regression_table.docx
-        ├── Table_CHE_by_income_quintile.csv
-        └── CHE_threshold_robustness.docx
+        ├── CHE_threshold_robustness.docx
+        └── Table_CHE_by_income_quintile.csv
 ```
 
 ## Requirements
 
-The code requires:
+- R 4.4 (the version configured in GitHub Actions)
+- `dplyr`
+- `readxl`
+- `openxlsx`
+- `modelsummary`
+- `labelled`
+- `survey`
+- `ggplot2`
+- `flextable`
+- `officer`
+- 7-Zip, to extract the two household Excel files from their RAR archives
 
-- R 4.2 or newer
-- dplyr
-- readxl
-- labelled
-- survey
-- ggplot2
-- modelsummary
-- openxlsx
-- flextable
-- officer
-
-The workflow reads the committed RDS components directly. The two Excel
-household files are extracted from `R93.rar` and `U93.rar` into the temporary
-`data/processed/` directory. The archived Access database (`93.rar`) is
-retained as an original source archive but is not required by the current R
-workflow.
-
-The workflow requires access to the original household survey files and an appropriate Access database driver for importing the source data.
+The workflow installs the listed R packages at runtime. A committed package lockfile has not yet been added, so package versions are not currently pinned.
 
 ## Reproduction
 
-Run the analysis from the repository root:
+Run the following commands from the repository root.
+
+First install 7-Zip and extract the two household files:
+
+```bash
+mkdir -p data/processed
+7z x data/raw/R93.rar -odata/processed -y
+7z x data/raw/U93.rar -odata/processed -y
+```
+
+Install the R packages:
+
+```r
+install.packages(c(
+  "dplyr",
+  "readxl",
+  "openxlsx",
+  "modelsummary",
+  "labelled",
+  "survey",
+  "ggplot2",
+  "flextable",
+  "officer"
+))
+```
+
+Run the analysis:
 
 ```r
 source("code/Health_Expenditure_Analysis.R")
 ```
 
-The script constructs the analytical dataset, estimates survey-weighted models, performs robustness and sensitivity analyses, and exports tables and figures to the output folders.
+The script writes tables to `outputs/tables/` and the income-quintile figure to `outputs/figures/`. It performs a final check that the expected output files exist and are non-empty.
 
-## Output Guide
+## Automated workflow
 
-| Location | Contents |
-| --- | --- |
-| `outputs/figures/` | Catastrophic health expenditure prevalence by income quintile |
-| `outputs/tables/` | Descriptive statistics, regression results, subgroup analyses, province specifications, interaction models, and CHE threshold sensitivity results |
+GitHub Actions is configured to run when changes are pushed to `main`, when a pull request targets `main`, or when the workflow is manually dispatched.
 
-## Interpretation and Limitations
+The workflow checks out the repository, sets up R, extracts the household Excel files, installs the R dependencies, runs the analysis, validates the expected outputs, and uploads the generated `outputs/` directory as a workflow artifact.
 
-This project estimates conditional associations and is presented as an applied microeconometrics coding sample rather than a causal research design.
+The workflow is an execution check; a successful run does not by itself validate the underlying data definitions or research methodology.
 
-Important limitations include:
+## Interpretation and limitations
 
-- catastrophic health expenditure estimates depend on methodological choices such as thresholds and subsistence expenditure definitions
-- household survey measures depend on sampling and reporting procedures
-- alternative specifications may produce different numerical estimates
-- survey-weighted models account for sampling design but do not eliminate all sources of bias
-- the analysis does not identify causal effects of socioeconomic characteristics on health expenditure outcomes
+- The estimates are conditional associations, not causal effects.
+- CHE estimates depend on the threshold and the construction of subsistence expenditure and capacity to pay.
+- Household survey estimates depend on the quality of the underlying survey variables, weights, and identifiers.
+- The current survey-design declaration uses `ids = ~1` and household weights. It does not explicitly model strata or clusters.
+- The current workflow does not yet pin package versions through a lockfile.
+- The source variable definitions, expenditure annualization, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
 
-## Skills Demonstrated
+## Skills demonstrated
 
 - R data management and validation
-- household survey data construction
-- applied microeconometric analysis
-- survey-weighted regression methods
-- subgroup, robustness, and sensitivity analysis
-- reproducible output generation
-- transparent documentation of empirical limitations
-
-## Author
-
-Aliye Nezhad
-
-## License
-
-The code and documentation are released under the MIT License.
+- Household survey data construction
+- Survey-weighted descriptive analysis
+- Survey-weighted logistic regression
+- Subgroup, interaction, and sensitivity analysis
+- Reproducible output generation
+- Transparent documentation of empirical limitations
