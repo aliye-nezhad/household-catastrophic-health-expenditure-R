@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p data/processed
+          mkdir -p data/processed outputs/diagnostics
 
           if command -v 7zz >/dev/null 2>&1; then
             SEVEN_ZIP="$(command -v 7zz)"
@@ -80,7 +80,8 @@ jobs:
           test -s data/processed/U93.xls
 
           echo "=== Inventory of the additional 1393 archive ==="
-          "$SEVEN_ZIP" l data/raw/93.rar | grep -Ei 'P3S13|P3S06|R93|U93|medical|durable' || true
+          "$SEVEN_ZIP" l data/raw/93.rar > outputs/diagnostics/93_archive_inventory.txt
+          cat outputs/diagnostics/93_archive_inventory.txt
 
       - name: Install R dependencies
         shell: Rscript {0}
@@ -88,7 +89,7 @@ jobs:
           packages <- c(
             "dplyr",
             "readxl",
-            "openxlsx",
+            "writexl",
             "modelsummary",
             "labelled",
             "survey",
@@ -127,6 +128,9 @@ jobs:
           }
 
           system2("pandoc", "--version")
+
+      - name: Audit source-data coverage and survey identifiers
+        run: Rscript code/audit_source_data.R
 
       - name: Run full analysis and validate outputs
         run: Rscript code/Health_Expenditure_Analysis.R
