@@ -1,0 +1,70 @@
+name: R reproducibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-input-archives:
+    name: Inspect and extract source-data archives
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install 7-Zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip
+
+      - name: Inspect and extract archived survey inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="$RUNNER_TEMP/archive-manifest.txt"
+          extraction_root="$RUNNER_TEMP/survey-inputs"
+          mkdir -p "$extraction_root"
+          : > "$manifest"
+
+          shopt -s nullglob
+          archives=(data/raw/*.rar)
+          if [ ${#archives[@]} -eq 0 ]; then
+            echo "ERROR: No RAR archives found in data/raw/." | tee -a "$manifest"
+            exit 1
+          fi
+
+          for archive in "${archives[@]}"; do
+            name="$(basename "$archive" .rar)"
+            destination="$extraction_root/$name"
+            mkdir -p "$destination"
+
+            {
+              echo "=================================================="
+              echo "ARCHIVE: $archive"
+              echo "=================================================="
+              7zz l "$archive"
+              echo
+              echo "EXTRACTED FILES:"
+            } | tee -a "$manifest"
+
+            7zz x "$archive" "-o$destination" -y
+            find "$destination" -type f -printf '%P\t%s bytes\n' | sort | tee -a "$manifest"
+            echo | tee -a "$manifest"
+          done
+
+          echo "COMPLETE ARCHIVE MANIFEST"
+          cat "$manifest"
+
+      - name: Upload archive inspection manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: survey-archive-manifest
+          path: ${{ runner.temp }}/archive-manifest.txt
+          if-no-files-found: error
+          retention-days: 14
