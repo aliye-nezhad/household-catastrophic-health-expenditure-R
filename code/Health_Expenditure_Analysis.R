@@ -25,7 +25,7 @@
 
 library(dplyr)
 library(readxl)
-library(openxlsx)
+library(writexl)
 library(modelsummary)
 library(labelled)
 library(survey)
@@ -662,13 +662,12 @@ if (is.null(categorical_summary)) {
   )
 }
 
-openxlsx::write.xlsx(
+writexl::write_xlsx(
   list(
     "Numeric Summary" = numeric_summary,
     "Categorical Counts" = categorical_summary
   ),
-  file = "outputs/tables/summary_statistics.xlsx",
-  overwrite = TRUE
+  path = "outputs/tables/summary_statistics.xlsx"
 )
 
 
@@ -1134,7 +1133,23 @@ if (length(missing_outputs) > 0) {
 
 # Validate that the Excel workbook is readable, not merely non-empty.
 tryCatch(
-  openxlsx::loadWorkbook("outputs/tables/summary_statistics.xlsx"),
+  {
+    workbook_path <- "outputs/tables/summary_statistics.xlsx"
+    workbook_sheets <- readxl::excel_sheets(workbook_path)
+
+    expected_sheets <- c("Numeric Summary", "Categorical Counts")
+    if (!identical(workbook_sheets, expected_sheets)) {
+      stop(
+        "Unexpected workbook sheets: ",
+        paste(workbook_sheets, collapse = ", ")
+      )
+    }
+
+    invisible(lapply(
+      workbook_sheets,
+      function(sheet) readxl::read_excel(workbook_path, sheet = sheet)
+    ))
+  },
   error = function(e) {
     stop(
       "Excel output validation failed: ",
