@@ -103,7 +103,7 @@ household-catastrophic-health-expenditure-R/
         ├── model_comparison.docx
         ├── CHE_final_regression_table.docx
         ├── Table_CHE_by_income_quintile.csv
-        └── marginal_effects.csv
+        └── CHE_threshold_robustness.docx
 ```
 
 ## Requirements
@@ -117,8 +117,15 @@ The code requires:
 - survey
 - ggplot2
 - modelsummary
-- RODBC
 - openxlsx
+- flextable
+- officer
+
+The workflow reads the committed RDS components directly. The two Excel
+household files are extracted from `R93.rar` and `U93.rar` into the temporary
+`data/processed/` directory. The archived Access database (`93.rar`) is
+retained as an original source archive but is not required by the current R
+workflow.
 
 The workflow requires access to the original household survey files and an appropriate Access database driver for importing the source data.
 
