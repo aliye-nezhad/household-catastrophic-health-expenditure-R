@@ -27,6 +27,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if command -v 7zz >/dev/null 2>&1; then
+            SEVEN_ZIP="$(command -v 7zz)"
+          elif command -v 7z >/dev/null 2>&1; then
+            SEVEN_ZIP="$(command -v 7z)"
+          else
+            echo "7-Zip executable was not found after installation."
+            dpkg -L 7zip
+            exit 1
+          fi
+          echo "Using archive utility: $SEVEN_ZIP"
           manifest="$RUNNER_TEMP/archive-manifest.txt"
           extraction_root="$RUNNER_TEMP/survey-inputs"
           mkdir -p "$extraction_root"
@@ -48,12 +58,12 @@ jobs:
               echo "=================================================="
               echo "ARCHIVE: $archive"
               echo "=================================================="
-              7zz l "$archive"
+              "$SEVEN_ZIP" l "$archive"
               echo
               echo "EXTRACTED FILES:"
             } | tee -a "$manifest"
 
-            7zz x "$archive" "-o$destination" -y
+            "$SEVEN_ZIP" x "$archive" "-o$destination" -y
             find "$destination" -type f -printf '%P\t%s bytes\n' | sort | tee -a "$manifest"
             echo | tee -a "$manifest"
           done
