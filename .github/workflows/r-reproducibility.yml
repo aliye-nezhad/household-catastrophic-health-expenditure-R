@@ -11,70 +11,87 @@ permissions:
   contents: read
 
 jobs:
-  inspect-input-archives:
-    name: Inspect and extract source-data archives
+  reproduce:
+    name: Run household CHE analysis
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.4"
+          use-public-rspm: true
+
       - name: Install 7-Zip
         run: |
           sudo apt-get update
           sudo apt-get install -y 7zip
-
-      - name: Inspect and extract archived survey inputs
-        shell: bash
-        run: |
-          set -euo pipefail
           if command -v 7zz >/dev/null 2>&1; then
-            SEVEN_ZIP="$(command -v 7zz)"
+            7zz --help >/dev/null
           elif command -v 7z >/dev/null 2>&1; then
-            SEVEN_ZIP="$(command -v 7z)"
+            7z --help >/dev/null
           else
-            echo "7-Zip executable was not found after installation."
             dpkg -L 7zip
             exit 1
           fi
-          echo "Using archive utility: $SEVEN_ZIP"
-          manifest="$RUNNER_TEMP/archive-manifest.txt"
-          extraction_root="$RUNNER_TEMP/survey-inputs"
-          mkdir -p "$extraction_root"
-          : > "$manifest"
 
-          shopt -s nullglob
-          archives=(data/raw/*.rar)
-          if [ ${#archives[@]} -eq 0 ]; then
-            echo "ERROR: No RAR archives found in data/raw/." | tee -a "$manifest"
-            exit 1
+      - name: Extract required household Excel files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/processed
+
+          if command -v 7zz >/dev/null 2>&1; then
+            SEVEN_ZIP="$(command -v 7zz)"
+          else
+            SEVEN_ZIP="$(command -v 7z)"
           fi
 
-          for archive in "${archives[@]}"; do
-            name="$(basename "$archive" .rar)"
-            destination="$extraction_root/$name"
-            mkdir -p "$destination"
+          "$SEVEN_ZIP" x data/raw/R93.rar -odata/processed -y
+          "$SEVEN_ZIP" x data/raw/U93.rar -odata/processed -y
 
-            {
-              echo "=================================================="
-              echo "ARCHIVE: $archive"
-              echo "=================================================="
-              "$SEVEN_ZIP" l "$archive"
-              echo
-              echo "EXTRACTED FILES:"
-            } | tee -a "$manifest"
+          test -s data/processed/R93.xls
+          test -s data/processed/U93.xls
 
-            "$SEVEN_ZIP" x "$archive" "-o$destination" -y
-            find "$destination" -type f -printf '%P\t%s bytes\n' | sort | tee -a "$manifest"
-            echo | tee -a "$manifest"
-          done
+      - name: Install R dependencies
+        shell: Rscript {0}
+        run: |
+          packages <- c(
+            "dplyr",
+            "readxl",
+            "openxlsx",
+            "modelsummary",
+            "labelled",
+            "survey",
+            "ggplot2",
+            "flextable",
+            "officer"
+          )
+          missing <- packages[
+            !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
+          ]
+          if (length(missing) > 0) {
+            install.packages(
+              missing,
+              repos = "https://cloud.r-project.org"
+            )
+          }
+          stopifnot(all(vapply(
+            packages,
+            requireNamespace,
+            logical(1),
+            quietly = TRUE
+          )))
 
-          echo "COMPLETE ARCHIVE MANIFEST"
-          cat "$manifest"
+      - name: Run full analysis and validate outputs
+        run: Rscript code/Health_Expenditure_Analysis.R
 
-      - name: Upload archive inspection manifest
+      - name: Upload generated research outputs
         uses: actions/upload-artifact@v4
         with:
-          name: survey-archive-manifest
-          path: ${{ runner.temp }}/archive-manifest.txt
+          name: household-che-research-outputs
+          path: outputs/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
