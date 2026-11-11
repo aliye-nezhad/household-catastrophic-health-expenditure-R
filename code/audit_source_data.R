@@ -189,13 +189,15 @@ variable_inventory <- bind_rows(
   inventory_one(urban_households, "Urban")
 )
 
-design_pattern <- regex(
-  "strata|cluster|psu|block|province|county|address|urban|rural|season|fasl|weight|khooshe|hhold|c11",
-  ignore_case = TRUE
+design_pattern <- paste(
+  "strata", "cluster", "psu", "block", "province", "county",
+  "address", "urban", "rural", "season", "fasl", "weight",
+  "khooshe", "hhold", "c11",
+  sep = "|"
 )
 
 design_candidate_fields <- variable_inventory |>
-  filter(grepl(design_pattern, variable)) |>
+  filter(grepl(design_pattern, variable, ignore.case = TRUE)) |>
   arrange(survey_residence, variable)
 
 # C11 is preserved as a raw category here. The audit does not assume its
