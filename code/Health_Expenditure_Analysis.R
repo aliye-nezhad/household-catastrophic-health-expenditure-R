@@ -455,7 +455,7 @@ final_health_data <- final_health_data |>
       
       weighted.mean(
         
-        food_expenditure[
+        equivalent_food_expenditure[
           food_share_percentile >= 0.45 &
             food_share_percentile <= 0.55
         ],
@@ -579,18 +579,97 @@ final_health_data <- final_health_data |>
 # 23. Descriptive Statistics
 ############################################################
 
-# Generate descriptive statistics for the analytical dataset.
+# Export reproducible descriptive statistics to a standards-compliant
+# Excel workbook. Identifier fields are excluded from the summaries.
 
-datasummary_skim(
-  final_health_data
+numeric_variables <- names(final_health_data)[
+  vapply(final_health_data, is.numeric, logical(1))
+]
+numeric_variables <- setdiff(
+  numeric_variables,
+  c("Address", "DYCOL01", "DYCOL02")
 )
 
+numeric_summary <- do.call(
+  rbind,
+  lapply(numeric_variables, function(variable) {
+    x <- final_health_data[[variable]]
+    observed <- x[!is.na(x)]
 
-# Export descriptive statistics
+    data.frame(
+      variable = variable,
+      observations = length(observed),
+      missing = sum(is.na(x)),
+      mean = if (length(observed) > 0) mean(observed) else NA_real_,
+      standard_deviation = if (length(observed) > 1) sd(observed) else NA_real_,
+      minimum = if (length(observed) > 0) min(observed) else NA_real_,
+      median = if (length(observed) > 0) median(observed) else NA_real_,
+      maximum = if (length(observed) > 0) max(observed) else NA_real_
+    )
+  })
+)
 
-datasummary_skim(
-  final_health_data,
-  output = "outputs/tables/summary_statistics.xlsx"
+categorical_variables <- intersect(
+  c("residence_type", "gender", "literacy", "income_rank"),
+  names(final_health_data)
+)
+categorical_variables <- categorical_variables[
+  !vapply(
+    final_health_data[categorical_variables],
+    is.numeric,
+    logical(1)
+  )
+]
+
+categorical_summary <- do.call(
+  rbind,
+  lapply(categorical_variables, function(variable) {
+    values <- as.character(final_health_data[[variable]])
+    values[is.na(values)] <- "(Missing)"
+    counts <- as.data.frame(
+      table(values),
+      stringsAsFactors = FALSE
+    )
+    names(counts) <- c("category", "unweighted_n")
+    counts$variable <- variable
+    counts$weighted_n <- vapply(
+      counts$category,
+      function(level) {
+        sum(final_health_data$weight[values == level], na.rm = TRUE)
+      },
+      numeric(1)
+    )
+    counts$weighted_percent <- 100 * counts$weighted_n /
+      sum(final_health_data$weight, na.rm = TRUE)
+
+    counts[, c(
+      "variable",
+      "category",
+      "unweighted_n",
+      "weighted_n",
+      "weighted_percent"
+    )]
+  })
+)
+
+if (is.null(categorical_summary)) {
+  categorical_summary <- data.frame(
+    variable = character(),
+    category = character(),
+    unweighted_n = integer(),
+    weighted_n = numeric(),
+    weighted_percent = numeric()
+  )
+}
+
+openxlsx::write.xlsx(
+  list(
+    "Numeric Summary" = numeric_summary,
+    "Categorical Counts" = categorical_summary
+  ),
+  file = "outputs/tables/summary_statistics.xlsx",
+  overwrite = TRUE,
+  asTable = TRUE
 )
 
 
@@ -638,7 +717,7 @@ model_main <- svyglm(
 
   design = survey_design,
   
-  family = binomial(link = "logit")
+  family = quasibinomial(link = "logit")
   
 )
 
@@ -681,6 +760,8 @@ modelsummary(
   statistic = "std.error",
   
   stars = TRUE,
+  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
+  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
   
   title =
     "Determinants of Catastrophic Health Expenditure",
@@ -715,7 +796,7 @@ model_urban <- svyglm(
   
   design = urban_design,
   
-  family = binomial(link = "logit")
+  family = quasibinomial(link = "logit")
   
 )
 
@@ -725,36 +806,49 @@ summary(model_urban)
 
 
 ############################################################
-# 29. Robustness Analysis: Large Households
+# 29. Large-Household Outcome-Support Diagnostics
 ############################################################
 
-# Estimate model among larger households.
+# The previous large-household logit produced extreme odds ratios and
+# standard errors, consistent with sparse cells or separation. Do not
+# present that unstable specification as a substantive result. Export
+# the outcome support by income category for transparent diagnosis.
 
-large_household_design <- subset(
-  
-  survey_design,
-  
-  household_size > 6
-  
+large_household_support <- final_health_data |>
+  filter(
+    household_size > 6,
+    !is.na(catastrophic_health_expenditure),
+    !is.na(income_rank)
+  ) |>
+  group_by(income_rank) |>
+  summarise(
+    unweighted_n = n(),
+    CHE_cases = sum(catastrophic_health_expenditure == 1),
+    non_CHE_cases = sum(catastrophic_health_expenditure == 0),
+    weighted_n = sum(weight, na.rm = TRUE),
+    weighted_CHE_prevalence = weighted.mean(
+      catastrophic_health_expenditure,
+      weight,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+write.csv(
+  large_household_support,
+  "outputs/tables/large_household_support.csv",
+  row.names = FALSE
 )
 
-
-model_large_households <- svyglm(
-  
-  catastrophic_health_expenditure ~
-    income_rank +
-    residence_type +
-    household_size +
-    age,
-  
-  design = large_household_design,
-  
-  family = binomial(link = "logit")
-  
+writeLines(
+  c(
+    "Large-household logistic regression not reported.",
+    "The previous specification produced extreme estimates and standard errors,",
+    "consistent with sparse outcome support or separation.",
+    "See large_household_support.csv before selecting an alternative specification."
+  ),
+  "outputs/tables/large_household_model_status.txt"
 )
-
-
-summary(model_large_households)
 
 
 
@@ -765,16 +859,8 @@ summary(model_large_households)
 modelsummary(
   
   list(
-    
-    "Main Model" =
-      model_main,
-    
-    "Urban Households" =
-      model_urban,
-    
-    "Large Households" =
-      model_large_households
-    
+    "Main Model" = model_main,
+    "Urban Households" = model_urban
   ),
   
   exponentiate = TRUE,
@@ -782,6 +868,8 @@ modelsummary(
   statistic = "std.error",
   
   stars = TRUE,
+  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
+  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
   
   title =
     "Logistic Regression Results",
@@ -888,7 +976,7 @@ model_province <- svyglm(
     literacy +
     factor(province),
   design = survey_design,
-  family = binomial(link="logit")
+  family = quasibinomial(link = "logit")
 )
 
 
@@ -902,7 +990,7 @@ model_interaction <- svyglm(
     age +
     literacy,
   design = survey_design,
-  family = binomial(link="logit")
+  family = quasibinomial(link = "logit")
 )
 
 
@@ -917,7 +1005,7 @@ model_CHE30 <- svyglm(
     age +
     literacy,
   design = survey_design,
-  family = binomial(link="logit")
+  family = quasibinomial(link = "logit")
 )
 
 
@@ -930,7 +1018,7 @@ model_CHE50 <- svyglm(
     age +
     literacy,
   design = survey_design,
-  family = binomial(link="logit")
+  family = quasibinomial(link = "logit")
 )
 
 
@@ -945,6 +1033,8 @@ modelsummary(
   exponentiate = TRUE,
   statistic = "std.error",
   stars = TRUE,
+  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
+  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
   output = "outputs/tables/CHE_final_regression_table.docx"
 )
 
@@ -958,6 +1048,8 @@ modelsummary(
   exponentiate = TRUE,
   statistic = "std.error",
   stars = TRUE,
+  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
+  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
   output = "outputs/tables/CHE_threshold_robustness.docx"
 )
 
@@ -989,6 +1081,20 @@ final_missing_summary <- data.frame(
 
 final_missing_summary
 
+write.csv(
+  final_missing_summary,
+  "outputs/tables/missing_data_summary.csv",
+  row.names = FALSE
+)
+
+# Validate the constructed outcome before estimation.
+observed_CHE_values <- unique(
+  na.omit(final_health_data$catastrophic_health_expenditure)
+)
+if (!all(observed_CHE_values %in% c(0, 1))) {
+  stop("The catastrophic health expenditure outcome is not binary.")
+}
+
 # Session information for reproducibility
 sessionInfo()
 
@@ -1009,6 +1115,9 @@ expected_outputs <- c(
   "outputs/tables/CHE_final_regression_table.docx",
   "outputs/tables/CHE_threshold_robustness.docx",
   "outputs/tables/Table_CHE_by_income_quintile.csv",
+  "outputs/tables/large_household_support.csv",
+  "outputs/tables/large_household_model_status.txt",
+  "outputs/tables/missing_data_summary.csv",
   "outputs/figures/figure1_income_quintile_CHE.png"
 )
 
@@ -1024,10 +1133,21 @@ if (length(missing_outputs) > 0) {
   )
 }
 
+# Validate that the Excel workbook is readable, not merely non-empty.
+tryCatch(
+  openxlsx::loadWorkbook("outputs/tables/summary_statistics.xlsx"),
+  error = function(e) {
+    stop(
+      "Excel output validation failed: ",
+      conditionMessage(e)
+    )
+  }
+)
+
 message(
   "OUTPUT VALIDATION PASSED: ",
   length(expected_outputs),
-  " expected outputs exist and are non-empty."
+  " expected outputs exist, are non-empty, and the Excel workbook is readable."
 )
 
 ############################################################
