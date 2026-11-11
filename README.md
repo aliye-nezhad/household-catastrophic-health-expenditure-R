@@ -104,7 +104,7 @@ household-catastrophic-health-expenditure-R/
 - R 4.4 (the version configured in GitHub Actions)
 - `dplyr`
 - `readxl`
-- `openxlsx`
+- `writexl`
 - `modelsummary`
 - `labelled`
 - `survey`
@@ -155,7 +155,7 @@ The script writes tables to `outputs/tables/` and the income-quintile figure to 
 
 GitHub Actions is configured to run when changes are pushed to `main`, when a pull request targets `main`, or when the workflow is manually dispatched.
 
-The workflow checks out the repository, sets up R, extracts the household Excel files, installs the R dependencies, runs the analysis, validates the expected outputs, and uploads the generated `outputs/` directory as a workflow artifact.
+The workflow checks out the repository, sets up R, extracts the household Excel files, inventories the original 1393 archive, audits household/medical-record coverage and candidate survey identifiers, installs the R dependencies, runs the analysis, validates the expected outputs, and uploads the generated `outputs/` directory as a workflow artifact.
 
 The workflow is an execution check; a successful run does not by itself validate the underlying data definitions or research methodology.
 
