@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Keep only the newest run for a given branch. This prevents repeated
+# commits from leaving several identical dependency-install jobs running.
+concurrency:
+  group: r-reproducibility-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   reproduce:
     name: Run household CHE analysis
@@ -24,10 +30,26 @@ jobs:
           r-version: "4.4"
           use-public-rspm: true
 
-      - name: Install 7-Zip
+      - name: Install system libraries required by R packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y 7zip
+          sudo apt-get install -y \
+            7zip \
+            libuv1-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libharfbuzz-dev \
+            libfribidi-dev \
+            libcairo2-dev \
+            libpng-dev \
+            libjpeg-dev \
+            libtiff-dev \
+            libwebp-dev \
+            libxml2-dev \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxt-dev
+
           if command -v 7zz >/dev/null 2>&1; then
             7zz --help >/dev/null
           elif command -v 7z >/dev/null 2>&1; then
@@ -69,21 +91,30 @@ jobs:
             "flextable",
             "officer"
           )
+
           missing <- packages[
             !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
           ]
+
           if (length(missing) > 0) {
-            install.packages(
-              missing,
-              repos = "https://cloud.r-project.org"
+            message("Installing missing R packages: ", paste(missing, collapse = ", "))
+            # setup-r configures the public Posit Package Manager repository.
+            # Keeping its repository setting allows Linux binary packages to
+            # be used where available, while the system libraries above
+            # support source builds when needed.
+            install.packages(missing)
+          }
+
+          unavailable <- packages[
+            !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
+          ]
+
+          if (length(unavailable) > 0) {
+            stop(
+              "Required R packages remain unavailable: ",
+              paste(unavailable, collapse = ", ")
             )
           }
-          stopifnot(all(vapply(
-            packages,
-            requireNamespace,
-            logical(1),
-            quietly = TRUE
-          )))
 
       - name: Run full analysis and validate outputs
         run: Rscript code/Health_Expenditure_Analysis.R
