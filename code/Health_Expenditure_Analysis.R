@@ -668,8 +668,7 @@ openxlsx::write.xlsx(
     "Categorical Counts" = categorical_summary
   ),
   file = "outputs/tables/summary_statistics.xlsx",
-  overwrite = TRUE,
-  asTable = TRUE
+  overwrite = TRUE
 )
 
 
