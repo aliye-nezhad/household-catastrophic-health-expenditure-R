@@ -91,7 +91,8 @@ jobs:
             "survey",
             "ggplot2",
             "flextable",
-            "officer"
+            "officer",
+            "pandoc"
           )
 
           missing <- packages[
@@ -117,6 +118,12 @@ jobs:
               paste(unavailable, collapse = ", ")
             )
           }
+
+          if (!nzchar(Sys.which("pandoc"))) {
+            stop("The system Pandoc executable is not available on PATH.")
+          }
+
+          system2("pandoc", "--version")
 
       - name: Run full analysis and validate outputs
         run: Rscript code/Health_Expenditure_Analysis.R
