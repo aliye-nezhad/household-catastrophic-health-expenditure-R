@@ -79,6 +79,9 @@ jobs:
           test -s data/processed/R93.xls
           test -s data/processed/U93.xls
 
+          echo "=== Inventory of the additional 1393 archive ==="
+          "$SEVEN_ZIP" l data/raw/93.rar | grep -Ei 'P3S13|P3S06|R93|U93|medical|durable' || true
+
       - name: Install R dependencies
         shell: Rscript {0}
         run: |
