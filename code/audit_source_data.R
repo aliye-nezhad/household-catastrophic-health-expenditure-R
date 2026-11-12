@@ -112,16 +112,20 @@ overall_coverage <- coverage |>
 
 coverage_summary <- bind_rows(coverage_summary, overall_coverage)
 
-# Report duplicate identifiers and medical records not linked to the household files.
-duplicate_households <- households |>
+# Report only aggregate match diagnostics. Do not write household Address
+# identifiers into workflow artifacts.
+duplicate_household_count <- households |>
   count(survey_residence, Address, name = "row_count") |>
-  filter(row_count > 1)
+  filter(row_count > 1) |>
+  nrow()
 
-medical_only_addresses <- medical_keys |>
-  anti_join(household_keys, by = c("survey_residence", "Address"))
+medical_only_address_count <- medical_keys |>
+  anti_join(household_keys, by = c("survey_residence", "Address")) |>
+  nrow()
 
-household_only_addresses <- household_keys |>
-  anti_join(medical_keys, by = c("survey_residence", "Address"))
+household_only_address_count <- household_keys |>
+  anti_join(medical_keys, by = c("survey_residence", "Address")) |>
+  nrow()
 
 # The 1393 metadata define these provision codes for the medical table.
 method_labels <- c(
@@ -239,9 +243,6 @@ write.csv(medical_summary, "outputs/diagnostics/medical_data_summary.csv", row.n
 write.csv(variable_inventory, "outputs/diagnostics/household_variable_inventory.csv", row.names = FALSE)
 write.csv(design_candidate_fields, "outputs/diagnostics/design_candidate_fields.csv", row.names = FALSE)
 write.csv(sample_summary, "outputs/diagnostics/household_sample_summary.csv", row.names = FALSE)
-write.csv(duplicate_households, "outputs/diagnostics/duplicate_household_addresses.csv", row.names = FALSE)
-write.csv(medical_only_addresses, "outputs/diagnostics/medical_addresses_not_in_household_file.csv", row.names = FALSE)
-write.csv(household_only_addresses, "outputs/diagnostics/households_without_medical_records.csv", row.names = FALSE)
 
 if (!is.null(income_rank_distribution)) {
   write.csv(income_rank_distribution, "outputs/diagnostics/C11_value_distribution.csv", row.names = FALSE)
@@ -255,9 +256,9 @@ summary_lines <- c(
   paste0("Rural medical rows: ", nrow(rural_medical)),
   paste0("Urban medical rows: ", nrow(urban_medical)),
   paste0("Unique addresses in combined medical files: ", nrow(medical_keys)),
-  paste0("Duplicate household-address rows: ", nrow(duplicate_households)),
-  paste0("Medical addresses absent from household files: ", nrow(medical_only_addresses)),
-  paste0("Household addresses without medical records: ", nrow(household_only_addresses)),
+  paste0("Duplicate household-address rows (count only): ", duplicate_household_count),
+  paste0("Medical addresses absent from household files (count only): ", medical_only_address_count),
+  paste0("Household addresses without medical records (count only): ", household_only_address_count),
   paste0("Household-file variables matching design/identifier patterns: ",
          paste(unique(design_candidate_fields$variable), collapse = ", ")),
   "",
@@ -274,9 +275,6 @@ expected <- c(
   "outputs/diagnostics/household_variable_inventory.csv",
   "outputs/diagnostics/design_candidate_fields.csv",
   "outputs/diagnostics/household_sample_summary.csv",
-  "outputs/diagnostics/duplicate_household_addresses.csv",
-  "outputs/diagnostics/medical_addresses_not_in_household_file.csv",
-  "outputs/diagnostics/households_without_medical_records.csv",
   "outputs/diagnostics/source_data_audit.txt"
 )
 
