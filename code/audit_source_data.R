@@ -127,18 +127,19 @@ household_only_address_count <- household_keys |>
   anti_join(medical_keys, by = c("survey_residence", "Address")) |>
   nrow()
 
-# The 1393 metadata define these provision codes for the medical table.
-# Labels cross-checked against the independent 1393 HEIS processing
-# script (93.R), which recodes DYCOL02 as the acquisition method.
+# DYCOL02 records how the item was obtained, not the type of
+# healthcare provider. Codes 2-8 are non-monetary acquisition methods.
+# Labels follow the HEIS questionnaire documentation and its description
+# of non-monetary income.
 method_labels <- c(
   "1" = "Purchased",
-  "2" = "Homemade",
-  "3" = "Public service",
-  "4" = "Cooperative service",
-  "5" = "Private service",
-  "6" = "Agriculture",
-  "7" = "Non-agriculture",
-  "8" = "Free"
+  "2" = "Home-produced",
+  "3" = "Received in return for public-sector work",
+  "4" = "Received in return for cooperative-sector work",
+  "5" = "Received in return for private-sector work",
+  "6" = "Received in return for agricultural-business work",
+  "7" = "Received in return for non-agricultural-business work",
+  "8" = "Received free"
 )
 
 medical$provision_method_label <- unname(method_labels[as.character(medical$DYCOL02)])
