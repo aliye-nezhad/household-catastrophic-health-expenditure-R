@@ -54,6 +54,14 @@ cd household-catastrophic-health-expenditure-R
 pixi run --locked reproduce
 ```
 
-The command prints the path to the new results under `reproduced/run-*/`. Start with `tables/regression_coefficients.csv` for the model estimates, `tables/summary_statistics.xlsx` for the sample, and `figures/figure1_economic_quintile_CHE.png` for the figure. The `diagnostics/` folder contains the comparison with published estimates and the province-clustered results. The checked-in `outputs/` folder contains results from an earlier version.
+The command prints the path to the full results under `reproduced/run-*/`. For the results in this repository, start with the [sample workbook](outputs/tables/summary_statistics.xlsx), [main regression](outputs/tables/regression_results.docx), and [economic-rank figure](outputs/figures/figure1_economic_quintile_CHE.png). The [results guide](outputs/README.md) links the coefficient estimates, sensitivity tables, and published comparison.
 
-The main analysis is in [`code/Health_Expenditure_Analysis.R`](code/Health_Expenditure_Analysis.R). The code is released under the [MIT License](LICENSE).
+The main analysis is in [`code/Health_Expenditure_Analysis.R`](code/Health_Expenditure_Analysis.R).
+
+## Author
+
+Aliye Nezhad
+
+## License
+
+The analysis code and project documentation are available under the [MIT License](LICENSE). The [data notes](data/README.md) describe the survey sources.

@@ -1,0 +1,13 @@
+"reference_method","numerator_method","residence_group","households","weighted_CHE_prevalence","weighted_mean_capacity_to_pay","weighted_mean_annual_health_expenditure","weighted_CHE_prevalence_percent"
+"Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)","Purchased records only (candidate OOP measure)","All",38189,0.017878736346289,166074380.006286,10914099.2659979,1.7878736346289
+"Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)","Purchased records only (candidate OOP measure)","Rural",19334,0.0249732742922547,96743536.046925,7232456.67651174,2.49732742922547
+"Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)","Purchased records only (candidate OOP measure)","Urban",18855,0.0153530551627343,190756411.360801,12224777.3515421,1.53530551627343
+"Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)","Purchased records only (candidate OOP measure)","All",38189,0.0171541130826949,171879370.555922,10914099.2659979,1.71541130826949
+"Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)","Purchased records only (candidate OOP measure)","Rural",19334,0.0244665032516494,98801590.2139723,7232456.67651174,2.44665032516494
+"Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)","Purchased records only (candidate OOP measure)","Urban",18855,0.0145508757193596,197895324.82262,12224777.3515421,1.45508757193596
+"Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)","All recorded Table 6 acquisition methods (diagnostic only)","All",38189,0.019078624985392,166074380.006286,11377809.7620207,1.9078624985392
+"Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)","All recorded Table 6 acquisition methods (diagnostic only)","Rural",19334,0.0260398480130035,96743536.046925,7560331.68083124,2.60398480130035
+"Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)","All recorded Table 6 acquisition methods (diagnostic only)","Urban",18855,0.0166004043952317,190756411.360801,12736845.7741933,1.66004043952317
+"Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)","All recorded Table 6 acquisition methods (diagnostic only)","All",38189,0.0183771392352045,171879370.555922,11377809.7620207,1.83771392352045
+"Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)","All recorded Table 6 acquisition methods (diagnostic only)","Rural",19334,0.0255330769723982,98801590.2139723,7560331.68083124,2.55330769723982
+"Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)","All recorded Table 6 acquisition methods (diagnostic only)","Urban",18855,0.0158295995037698,197895324.82262,12736845.7741933,1.58295995037698

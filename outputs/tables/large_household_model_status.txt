@@ -1,0 +1,4 @@
+Large-household logistic regression not reported.
+The previous specification produced extreme estimates and standard errors,
+consistent with sparse outcome support or separation.
+See large_household_support.csv before selecting an alternative specification.

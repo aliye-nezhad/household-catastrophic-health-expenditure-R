@@ -1,13 +1,15 @@
-# 1393 HEIS inputs
+# 1393 household survey data
 
-The Household Expenditure and Income Survey was collected by the Statistical Center of Iran. The 1393 round spans 2014–15. The pipeline uses the five frozen inputs below and verifies their SHA-256 hashes against `data/raw.sha256`. [HEIS documentation](https://m-hoseini.github.io/HEIS/introduction.html)
+The Statistical Center of Iran collected the Household Expenditure and Income Survey. The analysis uses five files from the 1393 round (2014–15). [Survey background](https://m-hoseini.github.io/HEIS/introduction.html)
 
 | File under `data/raw/` | Role |
 | --- | --- |
-| `R93.rar`, `U93.rar` | Rural and urban household summary workbooks. The analysis uses `ADDRESS`, demographic fields, `GHazineh`, `VKhorak`, `C11`, `C11New` and `weight`. |
+| `R93.rar`, `U93.rar` | Rural and urban household summary workbooks with household identifiers, demographics, total and food expenditure, economic rank, and sampling weights. |
 | `R93P3S06.rds`, `U93P3S06.rds` | Rural and urban Table 6 medical records. `DYCOL01` is the item code, `DYCOL02` is the acquisition method and `DYCOL03` is the monthly amount. |
 | `93.rar` | Original Access database containing the Table 6 medical records and `MahMorajeh`, the household interview month. |
 
-The Access audit compares the entire four-field Table 6 record multiset against the RDS files and verifies the interview-month link for households and medical records. The RDS files store item codes numerically, so the comparison normalizes the Access text codes before sorting. Private temporary directories hold the extracted workbooks, database and record-level audit files during each run. The results contain aggregate tables and database metadata.
+The two medical extracts match all 68,217 Table 6 records in the Access archive on household identifier, item code, acquisition method, and amount. The comparison converts the original item codes to the numeric form used in the extracts. The archive also links the interview month to every household in the workbooks and to every medical record. [Linkage counts](../outputs/diagnostics/access_linkage.csv)
 
-The nominal analysis uses the workbooks' household expenditure totals and the committed medical extracts. The 1393 item-to-CPI crosswalk, monthly item price indices and official design identifiers are outstanding inputs for the price and variance comparisons. [Hoseini's processing notes](https://m-hoseini.github.io/HEIS/cleaning-data.html)
+The run checks the [SHA-256 hashes](raw.sha256) before reading the input files. The extracted workbooks, database, and record-level audit files are held in temporary storage during the run. The saved linkage results contain aggregate counts.
+
+The estimates use nominal expenditure amounts. An item-level price adjustment requires the 1393 item-to-CPI crosswalk and monthly item price indices. The official strata and primary sampling-unit identifiers are needed for full survey-design variance estimation. [Survey processing notes](https://m-hoseini.github.io/HEIS/cleaning-data.html)
