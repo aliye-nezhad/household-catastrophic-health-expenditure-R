@@ -12,12 +12,12 @@ How are household socioeconomic and demographic characteristics associated with 
 
 ## Data
 
-The workflow combines household demographic and expenditure information with health-expenditure records and sampling weights.
+The workflow combines household demographic and expenditure information with health-expenditure records and sampling weights. For the medical module, only provision-method code 1 (purchased) is included in the out-of-pocket numerator. Codes 2–8 (homemade, public service, cooperative service, private service, agriculture, non-agriculture, and free) are excluded from that numerator. The all-method total and record counts are retained as diagnostics.
 
 | Variable | Description | Role |
 | --- | --- | --- |
 | `catastrophic_health_expenditure` | CHE indicator based on the baseline threshold | Dependent variable |
-| `annual_health_expenditure` | Current script's annualized aggregate from Table 6 | Provisional CHE numerator; OOP classification and CPI treatment not yet verified |
+| `annual_health_expenditure` | Annualized purchased medical expenditure from Table 6 (provision-method code 1) | CHE numerator; CPI adjustment remains outstanding |
 | `capacity_to_pay` | Household expenditure remaining after subsistence needs | CHE denominator |
 | `income_rank` | Household economic-position indicator | Main socioeconomic variable |
 | `residence_type` | Urban/rural classification | Household characteristic |
@@ -49,7 +49,7 @@ CHE = 0 otherwise
 
 The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds.
 
-The implementation currently uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are provisional implementation choices, not yet confirmed as the exact benchmark specification. The current numerator is not yet CPI-adjusted, and its OOP definition has not been established.
+The implementation currently uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are provisional implementation choices, not yet confirmed as the exact benchmark specification. The numerator now excludes non-purchased provision methods. It is not yet adjusted using the interview-month, item-specific CPI series.
 
 ## Empirical workflow
 
@@ -171,6 +171,7 @@ The workflow is an execution check; a successful run does not by itself validate
 - The source variable definitions, expenditure annualization, OOP classification, item-specific CPI adjustment, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
 - The published 2014 analytical sample differs from the current constructed sample by two urban observations; this discrepancy is documented and unresolved.
 - The current code should be treated as an evolving replication audit, not a validated reproduction of the published estimates.
+- Health expenditure is annualized from the monthly Table 6 values, but it has not yet been deflated with the interview-month, item-specific CPI series used by the independent HEIS processing code. Do not interpret the current CHE estimates as final real-expenditure estimates.
 
 ## Skills demonstrated
 
