@@ -46,18 +46,33 @@ The baseline uses household weights and treats households as independent samplin
 
 ## Repository structure
 
-| Path | Contents |
-| --- | --- |
-| [`code/`](code) | [Main R analysis](code/Health_Expenditure_Analysis.R), [source-data checks](code/audit_source_data.R), and [result validation](code/validate_reproduction.R). |
-| [`data/`](data) | [1393 survey files](data/raw), [source notes](data/README.md), and [input hashes](data/raw.sha256). |
-| [`outputs/`](outputs) | Saved results and the [guide to the output files](outputs/README.md). |
-| [`outputs/tables/`](outputs/tables) | Sample statistics, regression tables, and coefficient estimates. |
-| [`outputs/figures/`](outputs/figures) | Catastrophic expenditure prevalence by economic rank. |
-| [`outputs/diagnostics/`](outputs/diagnostics) | Survey linkage checks, published comparisons, and sensitivity results. |
-| [`pixi.toml`](pixi.toml) and [`pixi.lock`](pixi.lock) | The reproduction command and locked R environment. |
-| [`.github/`](.github) | Repository workflow and run helpers. |
+```text
+├── .github/
+│   ├── scripts/                            # Reproduction helpers
+│   └── workflows/r-reproducibility.yml
+├── code/
+│   ├── Health_Expenditure_Analysis.R       # Main R analysis
+│   ├── audit_source_data.R
+│   └── validate_reproduction.R
+├── data/
+│   ├── raw/                                # 1393 survey archives and medical extracts
+│   ├── raw.sha256
+│   └── README.md
+├── outputs/
+│   ├── diagnostics/                        # Linkage, benchmark, and sensitivity checks
+│   ├── figures/
+│   │   └── figure1_economic_quintile_CHE.png
+│   ├── tables/
+│   │   ├── regression_coefficients.csv
+│   │   ├── regression_results.docx
+│   │   └── summary_statistics.xlsx
+│   └── README.md
+├── LICENSE
+├── pixi.toml
+└── pixi.lock
+```
 
-## Reproducing the results
+## Automated reproducibility
 
 Install Pixi 0.84.2 or later on x86-64 Linux. On Windows, run the commands inside WSL2. The source files are included and the lockfile specifies R 4.4.3 and the required packages. The first run downloads the environment from conda-forge. [Pixi releases](https://github.com/prefix-dev/pixi/releases)
 
@@ -68,6 +83,8 @@ pixi run --locked reproduce
 ```
 
 The command prints the path to the full results under `reproduced/run-*/`. For the results in this repository, start with the [sample workbook](outputs/tables/summary_statistics.xlsx), [main regression](outputs/tables/regression_results.docx), and [economic-rank figure](outputs/figures/figure1_economic_quintile_CHE.png). The [results guide](outputs/README.md) links the coefficient estimates, sensitivity tables, and published comparison.
+
+The [GitHub workflow](.github/workflows/r-reproducibility.yml) runs the same command and saves the results after the checks pass.
 
 ## Author
 
