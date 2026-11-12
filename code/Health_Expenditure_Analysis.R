@@ -224,7 +224,9 @@ health_data <- bind_rows(
     medical_record_count = coalesce(medical_record_count, 0L),
     oop_record_count = coalesce(oop_record_count, 0L),
     noncash_record_count = coalesce(noncash_record_count, 0L),
-    annual_health_expenditure = coalesce(annual_health_expenditure, 0)
+    annual_health_expenditure = coalesce(annual_health_expenditure, 0),
+    annual_health_expenditure_all_methods =
+      coalesce(annual_health_expenditure_all_methods, 0)
   )
 
 if (nrow(health_data) != nrow(R93) + nrow(U93)) {
@@ -488,6 +490,7 @@ final_health_data <- health_data |>
     weight,
     health_expenditure,
     health_expenditure_all_methods,
+    annual_health_expenditure_all_methods,
     medical_record_count,
     oop_record_count,
     noncash_record_count,
@@ -1163,7 +1166,7 @@ che_specification_sensitivity <- bind_rows(
     "Food-share percentile reference group (Yazdi-Feyzabadi et al., 2018)",
     "capacity_to_pay",
     "All recorded Table 6 acquisition methods (diagnostic only)",
-    "health_expenditure_all_methods"
+    "annual_health_expenditure_all_methods"
   ) |>
     mutate(
       weighted_mean_annual_health_expenditure =
