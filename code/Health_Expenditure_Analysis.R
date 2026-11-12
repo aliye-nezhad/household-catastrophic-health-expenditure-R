@@ -248,8 +248,8 @@ health_data <- health_data |>
     household_size = C01,
     total_expenditure = GHazineh,
     food_expenditure = VKhorak,
-    income_rank = C11New,
-    income_rank_unweighted = C11
+    economic_rank = C11,
+    economic_rank_alternative = C11New
   )
 
 
@@ -481,8 +481,8 @@ final_health_data <- health_data |>
     total_expenditure,
     food_expenditure,
     food_share,
-    income_rank,
-    income_rank_unweighted,
+    economic_rank,
+    economic_rank_alternative,
     weight,
     health_expenditure,
     health_expenditure_all_methods,
@@ -763,7 +763,7 @@ numeric_summary <- do.call(
 )
 
 categorical_variables <- intersect(
-  c("residence_type", "gender", "literacy", "income_rank"),
+  c("residence_type", "gender", "literacy", "economic_rank"),
   names(final_health_data)
 )
 categorical_variables <- categorical_variables[
@@ -859,7 +859,7 @@ survey_design <- svydesign(
 model_main <- svyglm(
   
   catastrophic_health_expenditure ~
-    income_rank +
+    economic_rank +
     residence_type +
     household_size +
     gender +
@@ -969,9 +969,9 @@ large_household_support <- final_health_data |>
   filter(
     household_size > 6,
     !is.na(catastrophic_health_expenditure),
-    !is.na(income_rank)
+    !is.na(economic_rank)
   ) |>
-  group_by(income_rank) |>
+  group_by(economic_rank) |>
   summarise(
     unweighted_n = n(),
     CHE_cases = sum(catastrophic_health_expenditure == 1),
@@ -1107,30 +1107,30 @@ if (any(che_construction_diagnostics$nonpositive_capacity_to_pay_n > 0) ||
 # 31. Final Research Extensions
 ############################################################
 
-# Income quintile analysis
+# Economic quintile analysis
 
-# C11New is used as the primary weighted income-decile candidate.
-# The source audit finds near-equal weighted totals across its ten categories
-# within each residence group, while original C11 has near-equal unweighted
-# counts. Official metadata confirmation remains outstanding.
-# Map adjacent deciles into quintiles explicitly; ntile() would split tied
-# categories and create artificial breaks.
-income_decile <- suppressWarnings(as.integer(as.character(final_health_data$income_rank)))
-income_decile_unweighted <- suppressWarnings(
-  as.integer(as.character(final_health_data$income_rank_unweighted))
+# Preserve C11 as the primary decile variable used in the original project
+# specification. C11New is retained as an alternative candidate because
+# its weighted distribution differs materially, especially in urban areas.
+# Neither variable is labelled as income- or expenditure-based until the
+# official 1393 variable metadata are verified.
+# Map adjacent deciles into quintiles explicitly.
+economic_decile <- suppressWarnings(as.integer(as.character(final_health_data$economic_rank)))
+economic_decile_alternative <- suppressWarnings(
+  as.integer(as.character(final_health_data$economic_rank_alternative))
 )
 if (any(!is.na(income_decile) & !(income_decile %in% 0:9))) {
-  stop("C11New contains values outside the expected 0-9 income-decile coding.")
+  stop("C11 contains values outside the expected 0-9 decile coding.")
 }
 if (any(!is.na(income_decile_unweighted) & !(income_decile_unweighted %in% 0:9))) {
-  stop("C11 contains values outside the expected 0-9 income-decile coding.")
+  stop("C11New contains values outside the expected 0-9 decile coding.")
 }
 
 final_health_data <- final_health_data |>
   mutate(
     income_decile = income_decile,
     income_decile_unweighted = income_decile_unweighted,
-    income_quintile = case_when(
+    economic_quintile = case_when(
       income_decile %in% c(0L, 1L) ~ 1L,
       income_decile %in% c(2L, 3L) ~ 2L,
       income_decile %in% c(4L, 5L) ~ 3L,
@@ -1158,7 +1158,7 @@ income_quintile_summary <- svyby(
 
 write.csv(
   income_quintile_summary,
-  "outputs/tables/Table_CHE_by_income_quintile.csv",
+  "outputs/tables/Table_CHE_by_economic_quintile.csv",
   row.names = FALSE
 )
 
@@ -1173,14 +1173,14 @@ income_plot <- ggplot(
   geom_line() +
   geom_point() +
   labs(
-    title = "Catastrophic Health Expenditure by Income Quintile",
+    title = "Catastrophic Health Expenditure by Economic Quintile",
     x = "Income Quintile",
     y = "Weighted Prevalence"
   )
 
 
 ggsave(
-  "outputs/figures/figure1_income_quintile_CHE.png",
+  "outputs/figures/figure1_economic_quintile_CHE.png",
   income_plot,
   width = 7,
   height = 5
@@ -1207,7 +1207,7 @@ model_province <- svyglm(
 
 model_interaction <- svyglm(
   catastrophic_health_expenditure ~
-    income_rank * residence_type +
+    economic_rank * residence_type +
     household_size +
     gender +
     age +
