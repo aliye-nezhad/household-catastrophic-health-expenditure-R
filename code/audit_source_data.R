@@ -189,6 +189,7 @@ variable_inventory <- bind_rows(
   inventory_one(urban_households, "Urban")
 )
 
+# Use base R only here; no stringr dependency is required.
 design_pattern <- paste(
   "strata", "cluster", "psu", "block", "province", "county",
   "address", "urban", "rural", "season", "fasl", "weight",
