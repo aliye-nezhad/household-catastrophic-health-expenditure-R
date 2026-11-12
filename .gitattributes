@@ -1,1 +1,1 @@
-code/*.sh -linguist-detectable
+*.sh linguist-detectable=false
