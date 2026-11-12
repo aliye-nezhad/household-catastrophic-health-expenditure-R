@@ -1066,12 +1066,91 @@ final_health_data <- final_health_data |>
 
 
 # Export measurement diagnostics by residence and for the full sample.
+# The benchmark reports a national poverty line as well as rural and urban
+# lines. The national line must be estimated from the national 45%-55%
+# food-share reference group; it is not the weighted average of the two
+# residence-specific lines. This national line is diagnostic only: the
+# household-level CHE outcome continues to use the residence-specific line.
+national_reference_group <- final_health_data$food_expenditure_share > 0.45 &
+  final_health_data$food_expenditure_share < 0.55
+if (!any(national_reference_group)) {
+  stop("The national 45%-55% food-share reference group is empty.")
+}
+national_subsistence_expenditure <- weighted.mean(
+  final_health_data$equivalent_food_expenditure[national_reference_group],
+  final_health_data$weight[national_reference_group],
+  na.rm = TRUE
+)
+if (!is.finite(national_subsistence_expenditure)) {
+  stop("The national subsistence expenditure estimate is not finite.")
+}
+
+subsistence_reference_group_data <- bind_rows(
+  final_health_data |>
+    mutate(residence_group = as.character(residence_type)),
+  final_health_data |>
+    mutate(residence_group = "All")
+) |>
+  mutate(
+    in_food_share_reference_group =
+      food_expenditure_share > 0.45 & food_expenditure_share < 0.55
+  )
+
+subsistence_reference_group_diagnostics <- subsistence_reference_group_data |>
+  group_by(residence_group) |>
+  summarise(
+    households = n(),
+    reference_group_households = sum(in_food_share_reference_group),
+    reference_group_unweighted_share =
+      mean(in_food_share_reference_group),
+    reference_group_weighted_population = sum(
+      weight[in_food_share_reference_group], na.rm = TRUE
+    ),
+    reference_group_weighted_share = weighted.mean(
+      as.numeric(in_food_share_reference_group), weight, na.rm = TRUE
+    ),
+    weighted_mean_equivalent_food_expenditure = weighted.mean(
+      equivalent_food_expenditure[in_food_share_reference_group],
+      weight[in_food_share_reference_group], na.rm = TRUE
+    ),
+    unweighted_mean_equivalent_food_expenditure = mean(
+      equivalent_food_expenditure[in_food_share_reference_group],
+      na.rm = TRUE
+    ),
+    weighted_mean_household_size = weighted.mean(
+      household_size[in_food_share_reference_group],
+      weight[in_food_share_reference_group], na.rm = TRUE
+    ),
+    weighted_mean_monthly_food_expenditure = weighted.mean(
+      food_expenditure[in_food_share_reference_group],
+      weight[in_food_share_reference_group], na.rm = TRUE
+    ) / 12,
+    weighted_mean_monthly_total_expenditure = weighted.mean(
+      total_expenditure[in_food_share_reference_group],
+      weight[in_food_share_reference_group], na.rm = TRUE
+    ) / 12,
+    .groups = "drop"
+  )
+
+write.csv(
+  subsistence_reference_group_diagnostics,
+  "outputs/diagnostics/subsistence_reference_group_diagnostics.csv",
+  row.names = FALSE
+)
+
 che_diagnostic_data <- bind_rows(
   final_health_data |>
     mutate(residence_group = as.character(residence_type)),
   final_health_data |>
     mutate(residence_group = "All")
-)
+) |>
+  mutate(
+    diagnostic_subsistence_expenditure = if_else(
+      residence_group == "All",
+      national_subsistence_expenditure,
+      subsistence_expenditure
+    )
+  )
 
 che_construction_diagnostics <- che_diagnostic_data |>
   group_by(residence_group) |>
@@ -1113,7 +1192,7 @@ che_construction_diagnostics <- che_diagnostic_data |>
       capacity_to_pay, weight, na.rm = TRUE
     ) / 12,
     weighted_mean_monthly_poverty_line = weighted.mean(
-      subsistence_expenditure, weight, na.rm = TRUE
+      diagnostic_subsistence_expenditure, weight, na.rm = TRUE
     ) / 12,
     weighted_mean_monthly_adjusted_subsistence = weighted.mean(
       adjusted_subsistence_expenditure, weight, na.rm = TRUE
