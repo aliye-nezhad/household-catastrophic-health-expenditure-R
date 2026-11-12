@@ -1483,11 +1483,20 @@ income_plot <- ggplot(
   )
 
 
+# Use the font shipped in the locked environment on every Linux runner.
+plot_font <- file.path(Sys.getenv("CONDA_PREFIX"), "fonts", "Ubuntu-R.ttf")
+if (file.exists(plot_font)) {
+  systemfonts::register_font("Ubuntu (Pixi)", plain = plot_font)
+  income_plot <- income_plot + theme(text = element_text(family = "Ubuntu (Pixi)"))
+}
+
 ggsave(
   "outputs/figures/figure1_economic_quintile_CHE.png",
   income_plot,
+  device = "png",
   width = 7,
-  height = 5
+  height = 5,
+  dpi = 300
 )
 
 
