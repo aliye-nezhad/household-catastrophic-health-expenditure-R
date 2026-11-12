@@ -67,6 +67,25 @@ dir.create(
 R93P3S06 <- readRDS("data/raw/R93P3S06.rds")
 U93P3S06 <- readRDS("data/raw/U93P3S06.rds")
 
+# Standardize household identifiers across Excel and RDS sources.
+# Numeric IDs are formatted without scientific notation or a trailing
+# decimal suffix; character IDs are trimmed but otherwise preserved.
+normalize_household_id <- function(x) {
+  if (is.numeric(x)) {
+    out <- format(
+      x,
+      scientific = FALSE,
+      trim = TRUE,
+      digits = 22
+    )
+    out <- sub("\\.0+$", "", out)
+  } else {
+    out <- trimws(as.character(x))
+  }
+  out[is.na(x)] <- NA_character_
+  out
+}
+
 
 ############################################################
 # 3. Prepare Imported Data
@@ -88,6 +107,7 @@ U93P3S06 <- readRDS("data/raw/U93P3S06.rds")
 aggregate_health_expenditure <- function(data) {
   data |>
     mutate(
+      Address = normalize_household_id(Address),
       health_expenditure_component =
         suppressWarnings(as.numeric(as.character(DYCOL03)))
     ) |>
@@ -133,6 +153,12 @@ U93 <- U93 |>
   rename(
     Address = ADDRESS
   )
+
+R93 <- R93 |>
+  mutate(Address = normalize_household_id(Address))
+
+U93 <- U93 |>
+  mutate(Address = normalize_household_id(Address))
 
 
 ############################################################
