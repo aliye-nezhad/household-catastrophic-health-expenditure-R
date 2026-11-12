@@ -91,7 +91,7 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           packages: any::dplyr any::readxl any::writexl any::modelsummary any::labelled any::survey any::ggplot2 any::flextable any::officer
-          dependencies: '"all"'
+          dependencies: '"hard"'
           cache: always
 
       - name: Verify Pandoc
