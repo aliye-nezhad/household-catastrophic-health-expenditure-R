@@ -1,0 +1,23 @@
+[workspace]
+name = "household-che"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+requires-pixi = ">=0.84.2"
+
+[dependencies]
+r-base = "4.4.3.*"
+r-dplyr = "*"
+r-readxl = "*"
+r-writexl = "*"
+r-modelsummary = "*"
+r-labelled = "*"
+r-survey = "*"
+r-ggplot2 = "*"
+r-flextable = "*"
+r-officer = "*"
+7zip = "*"
+mdbtools = "*"
+python = "3.12.*"
+
+[tasks]
+reproduce = "bash code/reproduce.sh"

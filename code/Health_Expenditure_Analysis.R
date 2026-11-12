@@ -31,6 +31,42 @@ library(labelled)
 library(survey)
 library(ggplot2)
 
+# Use the native Word writer so report generation uses the locked R libraries.
+write_regression_table <- function(models, title, path) {
+  counts <- vapply(models, function(model) {
+    format(stats::nobs(model), big.mark = ",", scientific = FALSE)
+  }, character(1))
+  observations <- as.data.frame(
+    c(list(term = "Observations"), as.list(counts)),
+    check.names = FALSE
+  )
+  table <- modelsummary(
+    models,
+    exponentiate = TRUE,
+    statistic = "std.error",
+    stars = TRUE,
+    gof_map = NA,
+    add_rows = observations,
+    notes = paste(
+      "Odds ratios with delta-method standard errors in parentheses.",
+      "Survey weights are applied. Standard errors use the weights-only design."
+    ),
+    title = title,
+    output = "flextable"
+  )
+  table <- table |>
+    flextable::fontsize(size = 9, part = "all") |>
+    flextable::padding(padding = 2, part = "all") |>
+    flextable::width(j = 1L, width = 2.75) |>
+    flextable::width(j = seq_along(models) + 1L, width = 3.45 / length(models)) |>
+    flextable::set_table_properties(
+      layout = "fixed",
+      align = "left",
+      opts_word = list(split = FALSE, repeat_headers = TRUE)
+    )
+  flextable::save_as_docx(table, path = path)
+}
+
 # Reproducibility seed
 set.seed(1234)
 
@@ -121,15 +157,21 @@ aggregate_health_expenditure <- function(data) {
   data <- data |>
     mutate(
       Address = normalize_household_id(Address),
-      provision_method = suppressWarnings(as.integer(as.character(DYCOL02))),
+      provision_method = trimws(as.character(DYCOL02)),
       health_expenditure_component =
         suppressWarnings(as.numeric(as.character(DYCOL03)))
     )
 
   # HEIS provision-method code 1 means purchased. Codes 2-8 represent
   # non-cash acquisition methods and must not enter the OOP numerator.
-  invalid_method <- is.na(data$provision_method) |
-    !(data$provision_method %in% 1:8)
+  if (anyNA(data$Address) || any(!grepl("^[12][0-9]{10}$", data$Address))) {
+    stop("Table 6 contains missing or malformed household identifiers.")
+  }
+  if (any(!is.finite(data$health_expenditure_component) |
+          data$health_expenditure_component < 0)) {
+    stop("Table 6 amounts must be finite and non-negative.")
+  }
+  invalid_method <- !(data$provision_method %in% as.character(1:8))
   if (any(invalid_method)) {
     stop(
       "Unmapped or missing medical provision-method codes found. ",
@@ -138,6 +180,7 @@ aggregate_health_expenditure <- function(data) {
   }
 
   data |>
+    mutate(provision_method = as.integer(provision_method)) |>
     group_by(Address) |>
     summarise(
       health_expenditure = sum(
@@ -171,30 +214,30 @@ if (anyDuplicated(R93_health$Address) || anyDuplicated(U93_health$Address)) {
 # 5. Import External Household Files
 ############################################################
 
-# Import household-level survey files containing demographic
-# and expenditure information.
-
-R93 <- read_excel("data/processed/R93.xls")
-U93 <- read_excel("data/processed/U93.xls")
-
-
-# Standardize household identifier name
-
-R93 <- R93 |>
-  rename(
-    Address = ADDRESS
+# Import the analysis fields as text, preserving the identifier and category
+# codes. Importing unused columns with guessed types produces cell warnings.
+read_households_for_analysis <- function(path) {
+  required <- c(
+    "ADDRESS", "A01", "A02", "A03", "C01",
+    "GHazineh", "VKhorak", "C11", "C11New", "weight"
   )
+  header <- names(read_excel(path, n_max = 0))
+  missing <- setdiff(required, header)
+  if (length(missing) > 0L) {
+    stop(path, " is missing analysis fields: ", paste(missing, collapse = ", "))
+  }
+  read_excel(path, col_types = ifelse(header %in% required, "text", "skip")) |>
+    rename(Address = ADDRESS) |>
+    mutate(Address = normalize_household_id(Address))
+}
 
-U93 <- U93 |>
-  rename(
-    Address = ADDRESS
-  )
+R93 <- read_households_for_analysis("data/processed/R93.xls")
+U93 <- read_households_for_analysis("data/processed/U93.xls")
 
-R93 <- R93 |>
-  mutate(Address = normalize_household_id(Address))
-
-U93 <- U93 |>
-  mutate(Address = normalize_household_id(Address))
+if (anyNA(R93$Address) || any(!grepl("^2[0-9]{10}$", R93$Address)) ||
+    anyNA(U93$Address) || any(!grepl("^1[0-9]{10}$", U93$Address))) {
+  stop("The rural and urban workbooks contain missing or malformed household IDs.")
+}
 
 
 ############################################################
@@ -208,10 +251,10 @@ U93 <- U93 |>
 # that table; the independent HEIS processing script likewise fills
 # absent expenditure categories with zero after a household-level join.
 merge_rural <- R93 |>
-  left_join(R93_health, by = "Address")
+  left_join(R93_health, by = "Address", relationship = "one-to-one")
 
 merge_urban <- U93 |>
-  left_join(U93_health, by = "Address")
+  left_join(U93_health, by = "Address", relationship = "one-to-one")
 
 health_data <- bind_rows(
   merge_rural,
@@ -496,6 +539,27 @@ final_health_data <- health_data |>
     noncash_record_count,
     annual_health_expenditure
   )
+
+# Validate the inputs used by the subsistence and capacity-to-pay calculations.
+if (any(!is.finite(final_health_data$weight) | final_health_data$weight <= 0)) {
+  stop("Survey weights must be finite and strictly positive.")
+}
+if (any(!is.finite(final_health_data$total_expenditure) |
+        final_health_data$total_expenditure <= 0)) {
+  stop("Total household expenditure must be finite and positive.")
+}
+if (any(!is.finite(final_health_data$food_expenditure) |
+        final_health_data$food_expenditure < 0)) {
+  stop("Food expenditure must be finite and non-negative.")
+}
+if (any(!is.finite(final_health_data$household_size) | final_health_data$household_size < 1)) {
+  stop("Household size must be finite and at least one.")
+}
+if (any(!is.finite(final_health_data$annual_health_expenditure) |
+        final_health_data$annual_health_expenditure < 0)) {
+  stop("Annualized OOP expenditure must be finite and non-negative.")
+}
+
 ############################################################
 # Methodological Framework
 ############################################################
@@ -665,6 +729,12 @@ final_health_data <- final_health_data |>
     )
   )
 
+if (any(!is.finite(final_health_data$capacity_to_pay) |
+        final_health_data$capacity_to_pay <= 0) ||
+    any(!is.finite(final_health_data$capacity_to_pay_total_rank) |
+        final_health_data$capacity_to_pay_total_rank <= 0)) {
+  stop("Both CHE specifications require finite, strictly positive capacity to pay.")
+}
 
 ############################################################
 # 21. Identify Poor Households
@@ -716,24 +786,9 @@ final_health_data <- final_health_data |>
     catastrophic_health_expenditure_total_rank =
       as.integer(health_expenditure_ratio_total_rank >= 0.40)
   )
-# Validate core measurement inputs before constructing CHE.
-if (any(!is.finite(final_health_data$weight)) ||
-    any(final_health_data$weight <= 0)) {
-  stop("Survey weights must be finite and strictly positive.")
-}
-if (any(!is.finite(final_health_data$total_expenditure)) ||
-    any(final_health_data$total_expenditure <= 0)) {
-  stop("Total household expenditure must be finite and positive.")
-}
-if (any(!is.finite(final_health_data$food_expenditure)) ||
-    any(final_health_data$food_expenditure < 0)) {
-  stop("Food expenditure must be finite and non-negative.")
-}
-if (any(final_health_data$household_size < 1, na.rm = TRUE)) {
-  stop("Household size must be at least one.")
-}
-if (any(final_health_data$annual_health_expenditure < 0, na.rm = TRUE)) {
-  stop("Annualized OOP expenditure cannot be negative.")
+if (any(!is.finite(final_health_data$health_expenditure_ratio)) ||
+    any(!is.finite(final_health_data$health_expenditure_ratio_total_rank))) {
+  stop("Both CHE specifications require finite health-expenditure ratios.")
 }
 
 ############################################################
@@ -907,27 +962,10 @@ odds_ratios_main
 # 27. Export Main Regression Table
 ############################################################
 
-modelsummary(
-  
-  list(
-    "Survey Weighted Logistic Regression" =
-      model_main
-  ),
-  
-  exponentiate = TRUE,
-  
-  statistic = "std.error",
-  
-  stars = TRUE,
-  gof_map = NA,
-  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
-  
-  title =
-    "Determinants of Catastrophic Health Expenditure",
-  
-  output =
-    "outputs/tables/regression_results.docx"
-  
+write_regression_table(
+  list("Survey Weighted Logistic Regression" = model_main),
+  "Determinants of Catastrophic Health Expenditure",
+  "outputs/tables/regression_results.docx"
 )
 
 
@@ -1015,27 +1053,10 @@ writeLines(
 # 30. Export Multiple Models
 ############################################################
 
-modelsummary(
-  
-  list(
-    "Main Model" = model_main,
-    "Urban Households" = model_urban
-  ),
-  
-  exponentiate = TRUE,
-  
-  statistic = "std.error",
-  
-  stars = TRUE,
-  gof_map = NA,
-  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
-  
-  title =
-    "Logistic Regression Results",
-  
-  output =
-    "outputs/tables/model_comparison.docx"
-  
+write_regression_table(
+  list("Main Model" = model_main, "Urban Households" = model_urban),
+  "Logistic Regression Results",
+  "outputs/tables/model_comparison.docx"
 )
 
 
@@ -1381,14 +1402,6 @@ write.csv(
   row.names = FALSE
 )
 
-if (any(che_construction_diagnostics$nonpositive_capacity_to_pay_n > 0) ||
-    any(che_construction_diagnostics$nonfinite_health_ratio_n > 0)) {
-  stop(
-    "CHE construction produced non-positive capacity to pay or non-finite ",
-    "health-expenditure ratios. Inspect che_construction_diagnostics.csv."
-  )
-}
-
 ############################################################
 # 31. Final Research Extensions
 ############################################################
@@ -1538,35 +1551,84 @@ model_CHE50 <- svyglm(
 
 # Final regression table
 
-modelsummary(
+write_regression_table(
   list(
     "Baseline" = model_main,
     "Province FE" = model_province,
     "Economic rank x Rural" = model_interaction
   ),
-  exponentiate = TRUE,
-  statistic = "std.error",
-  stars = TRUE,
-  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
-  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
-  output = "outputs/tables/CHE_final_regression_table.docx"
+  "Survey-Weighted Logistic Regression Specifications",
+  "outputs/tables/CHE_final_regression_table.docx"
 )
 
 
-modelsummary(
+write_regression_table(
   list(
     "CHE 30%" = model_CHE30,
     "CHE 40%" = model_main,
     "CHE 50%" = model_CHE50
   ),
-  exponentiate = TRUE,
-  statistic = "std.error",
-  stars = TRUE,
-  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
-  notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
-  output = "outputs/tables/CHE_threshold_robustness.docx"
+  "Catastrophic Expenditure Threshold Sensitivity",
+  "outputs/tables/CHE_threshold_robustness.docx"
 )
 
+# Export unrounded regression results alongside the formatted Word tables.
+reported_models <- list(
+  baseline = model_main,
+  urban = model_urban,
+  province_fixed_effects = model_province,
+  economic_rank_residence_interaction = model_interaction,
+  che_30_percent = model_CHE30,
+  che_50_percent = model_CHE50
+)
+regression_coefficients <- bind_rows(lapply(names(reported_models), function(name) {
+  fit <- reported_models[[name]]
+  terms <- summary(fit)$coefficients
+  tibble(
+    model = name,
+    term = rownames(terms),
+    observations = stats::nobs(fit),
+    log_odds = terms[, 1],
+    log_odds_std_error = terms[, 2],
+    odds_ratio = exp(log_odds),
+    odds_ratio_std_error = odds_ratio * log_odds_std_error,
+    p_value = terms[, 4]
+  )
+}))
+write.csv(regression_coefficients, "outputs/tables/regression_coefficients.csv", row.names = FALSE)
+
+# Sensitivity of baseline inference to correlation within provinces.
+# The documented HEIS sampling stages require additional design identifiers.
+province_cluster_design <- svydesign(
+  ids = ~province,
+  weights = ~weight,
+  data = final_health_data
+)
+model_main_province_clusters <- svyglm(
+  formula(model_main),
+  design = province_cluster_design,
+  family = quasibinomial(link = "logit")
+)
+baseline_terms <- summary(model_main)$coefficients
+clustered_terms <- summary(model_main_province_clusters)$coefficients
+if (!isTRUE(all.equal(baseline_terms[, 1], clustered_terms[, 1], tolerance = 1e-10))) {
+  stop("Province clustering changed the baseline point estimates.")
+}
+inference_sensitivity <- tibble(
+  term = rownames(baseline_terms),
+  log_odds = baseline_terms[, 1],
+  weights_only_std_error = baseline_terms[, 2],
+  province_clustered_std_error = clustered_terms[, 2],
+  weights_only_p_value = baseline_terms[, 4],
+  province_clustered_p_value = clustered_terms[, 4],
+  provinces = n_distinct(final_health_data$province),
+  province_clustered_residual_df = model_main_province_clusters$df.residual
+)
+write.csv(
+  inference_sensitivity,
+  "outputs/diagnostics/baseline_inference_sensitivity.csv",
+  row.names = FALSE
+)
 
 ############################################################
 # Main Model Confidence Intervals
@@ -1609,8 +1671,8 @@ if (!all(observed_CHE_values %in% c(0, 1))) {
   stop("The catastrophic health expenditure outcome is not binary.")
 }
 
-# Session information for reproducibility
-sessionInfo()
+# Preserve the R version, locale, BLAS and loaded package versions in the run.
+writeLines(capture.output(sessionInfo()), "outputs/diagnostics/session_info.txt")
 
 
 
@@ -1649,11 +1711,16 @@ expected_outputs <- c(
   "outputs/tables/Table_CHE_by_economic_quintile.csv",
   "outputs/tables/large_household_support.csv",
   "outputs/tables/large_household_model_status.txt",
+  "outputs/tables/regression_coefficients.csv",
   "outputs/tables/missing_data_summary.csv",
   "outputs/diagnostics/che_construction_diagnostics.csv",
   "outputs/diagnostics/che_specification_sensitivity.csv",
   "outputs/diagnostics/che_benchmark_comparison.csv",
+  "outputs/diagnostics/baseline_inference_sensitivity.csv",
   "outputs/diagnostics/analysis_warnings.txt",
+  "outputs/diagnostics/sample_benchmark_comparison.csv",
+  "outputs/diagnostics/subsistence_reference_group_diagnostics.csv",
+  "outputs/diagnostics/session_info.txt",
   "outputs/figures/figure1_economic_quintile_CHE.png"
 )
 

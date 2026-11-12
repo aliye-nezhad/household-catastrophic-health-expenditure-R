@@ -26,3 +26,7 @@ Thumbs.db
 
 # Extracted survey files created during replication
 data/processed/
+
+# Locked environment and clean-run results
+/.pixi/
+/reproduced/

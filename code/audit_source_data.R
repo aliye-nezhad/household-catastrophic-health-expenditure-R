@@ -9,6 +9,11 @@
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(readxl))
 
+access_dir <- commandArgs(trailingOnly = TRUE)
+if (length(access_dir) > 1L) {
+  stop("Usage: Rscript code/audit_source_data.R [temporary Access-export directory]")
+}
+
 dir.create("outputs/diagnostics", recursive = TRUE, showWarnings = FALSE)
 
 as_id <- function(x) {
@@ -335,6 +340,79 @@ sample_summary <- households |>
     .groups = "drop"
   )
 
+canonical_medical_records <- function(data) {
+  fields <- c("Address", "DYCOL01", "DYCOL02", "DYCOL03")
+  if (!all(fields %in% names(data))) {
+    stop("A Table 6 input is missing Address, item, acquisition method or amount.")
+  }
+
+  # Access stores zero-padded item codes and amounts as text. The committed
+  # RDS stores them as numbers. Sort all four fields to compare multisets.
+  data |>
+    as_tibble() |>
+    transmute(
+      Address = as_id(Address),
+      DYCOL01 = as.numeric(DYCOL01),
+      DYCOL02 = as.numeric(DYCOL02),
+      DYCOL03 = as.numeric(DYCOL03)
+    ) |>
+    arrange(Address, DYCOL01, DYCOL02, DYCOL03)
+}
+
+audit_access_linkage <- function(prefix, household_data, medical_data) {
+  month_path <- file.path(access_dir, paste0(prefix, "Data_interview_month.csv"))
+  access_months <- read.csv(month_path, colClasses = "character")
+  address <- as_id(access_months$Address)
+  month_text <- trimws(access_months$MahMorajeh)
+  valid_month <- grepl("^(0?[1-9]|1[0-2])$", month_text)
+  if (anyNA(address) || any(!nzchar(address)) || anyDuplicated(address)) {
+    stop(prefix, " Access metadata must contain one row per nonempty Address.")
+  }
+
+  household_match <- match(household_data$Address, address)
+  medical_match <- match(medical_data$Address, address)
+  month <- suppressWarnings(as.integer(month_text))
+  previous_month_quarter <- ((month[household_match] - 2L) %% 12L) %/% 3L + 1L
+  recorded_quarter <- suppressWarnings(as.integer(household_data$Fasl))
+  purchased <- medical_data$DYCOL02 == 1
+  purchased_item_months <- tibble(
+    item = medical_data$DYCOL01[purchased],
+    month = month[medical_match[purchased]]
+  ) |>
+    filter(month %in% 1:12) |>
+    distinct() |>
+    nrow()
+
+  medical_path <- file.path(access_dir, paste0(prefix, "P3S06.csv"))
+  access_medical <- read.csv(medical_path, colClasses = "character")
+  rds_records <- canonical_medical_records(medical_data)
+  access_records <- canonical_medical_records(access_medical)
+
+  tibble(
+    survey_residence = first(household_data$survey_residence),
+    access_household_rows = nrow(access_months),
+    workbook_households = nrow(household_data),
+    workbook_households_with_valid_month = sum(valid_month[household_match], na.rm = TRUE),
+    workbook_quarters_matching_previous_month = sum(
+      recorded_quarter == previous_month_quarter, na.rm = TRUE
+    ),
+    medical_records_in_rds = nrow(rds_records),
+    medical_records_in_access = nrow(access_records),
+    medical_records_with_valid_month = sum(valid_month[medical_match], na.rm = TRUE),
+    purchased_item_month_pairs = purchased_item_months,
+    medical_records_match_access = !anyNA(rds_records) &&
+      identical(rds_records, access_records)
+  )
+}
+
+if (length(access_dir) == 1L) {
+  access_linkage <- bind_rows(
+    audit_access_linkage("R93", rural_households, rural_medical),
+    audit_access_linkage("U93", urban_households, urban_medical)
+  )
+  write.csv(access_linkage, "outputs/diagnostics/access_linkage.csv", row.names = FALSE)
+}
+
 write.csv(coverage_summary, "outputs/diagnostics/household_medical_coverage.csv", row.names = FALSE)
 write.csv(medical_method_summary, "outputs/diagnostics/medical_provision_method.csv", row.names = FALSE)
 write.csv(medical_summary, "outputs/diagnostics/medical_data_summary.csv", row.names = FALSE)
@@ -427,6 +505,9 @@ expected <- c(
   "outputs/diagnostics/source_data_audit.txt",
   "outputs/diagnostics/source_audit_warnings.txt"
 )
+if (length(access_dir) == 1L) {
+  expected <- c(expected, "outputs/diagnostics/access_linkage.csv")
+}
 
 missing <- expected[!file.exists(expected) | file.info(expected)$size <= 0]
 if (length(missing) > 0) {
