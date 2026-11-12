@@ -368,15 +368,18 @@ write.csv(
 )
 
 captured_warnings <- warnings()
-warning_messages <- if (is.null(captured_warnings)) {
-  character()
+warning_text <- if (is.null(captured_warnings)) {
+  "No warnings recorded."
 } else {
-  vapply(captured_warnings, conditionMessage, character(1))
+  capture.output(print(captured_warnings))
 }
 writeLines(
   c(
-    paste0("Captured warning count: ", length(warning_messages)),
-    warning_messages
+    paste0(
+      "Captured warning count: ",
+      if (is.null(captured_warnings)) 0L else length(captured_warnings)
+    ),
+    warning_text
   ),
   "outputs/diagnostics/source_audit_warnings.txt"
 )
