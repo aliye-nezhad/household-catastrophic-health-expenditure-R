@@ -7,7 +7,7 @@ umask 077
 
 ARCHIVE="data/raw/93.rar"
 OUTPUT_DIR="outputs/diagnostics"
-TMP_DIR="\${RUNNER_TEMP:-\${TMPDIR:-/tmp}}/heis-93-mdb"
+TMP_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/heis-93-mdb"
 
 [[ -s "$ARCHIVE" ]] || { echo "Missing archive: $ARCHIVE" >&2; exit 1; }
 mkdir -p "$OUTPUT_DIR"
@@ -30,11 +30,11 @@ command -v python3 >/dev/null 2>&1 || { echo "Python 3 is required for safe CSV 
 
 "$SEVEN_ZIP" x "$ARCHIVE" "-o$TMP_DIR" -y >/dev/null
 mapfile -d '' MDB_FILES < <(find "$TMP_DIR" -type f -iname '*.mdb' -print0)
-[[ "\${#MDB_FILES[@]}" -eq 1 ]] || {
-  echo "Expected exactly one MDB file; found \${#MDB_FILES[@]}." >&2
+[[ "${#MDB_FILES[@]}" -eq 1 ]] || {
+  echo "Expected exactly one MDB file; found ${#MDB_FILES[@]}." >&2
   exit 1
 }
-DB="\${MDB_FILES[0]}"
+DB="${MDB_FILES[0]}"
 
 printf 'Archive: %s\nDatabase filename: %s\nDatabase bytes: %s\n' \
   "$ARCHIVE" "$(basename "$DB")" "$(stat -c '%s' "$DB")" \
@@ -56,14 +56,14 @@ mdb-schema --relations "$DB" mysql > "$OUTPUT_DIR/access_db_relationships.sql"
 # only Address and MahMorajeh into temporary files for the R join audit.
 # The other household columns are discarded in the pipe and never written.
 for table in R93Data U93Data; do
-  mapping_file="$TMP_DIR/\${table}_interview_month.csv"
+  mapping_file="$TMP_DIR/${table}_interview_month.csv"
   mdb-export "$DB" "$table" | python3 -c '
 import csv, sys
 reader = csv.DictReader(sys.stdin)
 required = {"Address", "MahMorajeh"}
 if not reader.fieldnames or not required.issubset(reader.fieldnames):
     raise SystemExit("Required Address/MahMorajeh fields are missing from " + sys.argv[1])
-writer = csv.DictWriter(sys.stdout, fieldnames=["Address", "MahMorajeh"], lineterminator="\\n")
+writer = csv.DictWriter(sys.stdout, fieldnames=["Address", "MahMorajeh"], lineterminator="\n")
 writer.writeheader()
 for row in reader:
     writer.writerow({key: row.get(key, "") for key in ("Address", "MahMorajeh")})
