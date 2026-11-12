@@ -47,7 +47,7 @@ CHE = 1 if annual out-of-pocket health expenditure / capacity to pay >= 0.40
 CHE = 0 otherwise
 ```
 
-The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds.
+The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds. The subsistence reference group is formed by ranking households by total consumption expenditure and taking the 45th–55th percentile group; equivalent food expenditure is averaged with household weights within that group. This follows the published Iranian CHE implementation described by Ghiasvand et al. (2015).
 
 The implementation uses the published Iranian CHE approach: households are ranked by total consumption expenditure, and the weighted mean of equivalent food expenditure among the 45th–55th percentile reference group is used to estimate subsistence expenditure. The equivalence-scale exponent is 0.56. The ranking variable is total consumption expenditure, not food-expenditure share. The numerator includes provision-method code 1 (cash purchase) and excludes codes 2–8, consistent with the HEIS questionnaire's acquisition categories and the independent HEIS processing script.
 
@@ -173,11 +173,12 @@ The workflow is an execution check; a successful run does not by itself validate
 - The current survey-design declaration uses `ids = ~1` and household weights. Candidate fields `Fasl` and `block` have been audited, but their roles as strata, PSUs, or nested sampling identifiers are not confirmed. Standard errors therefore do not yet reflect a verified multistage design.
 - The workflow resolves direct R package dependencies through `setup-r-dependencies` and caches them by dependency signature. It does not yet commit a permanent `renv.lock` file.
 - The source variable definitions, expenditure annualization, OOP classification, item-specific CPI adjustment, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
-- The published 2014 analytical sample differs from the current constructed sample by two urban observations; this discrepancy is documented and unresolved.
+- The published 2014 analytical sample in Yazdi-Feyzabadi et al. (2018) contains 38,191 households (19,334 rural and 18,857 urban). The current constructed sample contains 38,189 (19,334 rural and 18,855 urban); two urban observations remain unexplained.
+- The script exports `che_benchmark_comparison.csv`, which compares the current weighted 2014 CHE headcount with the published 2014 estimates (3.15% overall, 4.38% rural, 2.69% urban). This is a diagnostic comparison, not a pass/fail criterion; CPI treatment, numerator scope, and survey-design implementation must be reconciled before interpreting any gap.
 - The current code should be treated as an evolving replication audit, not a validated reproduction of the published estimates.
 - Health expenditure is annualized from the monthly Table 6 values, but it has not yet been deflated with the interview-month, item-specific CPI series used by the independent HEIS processing code. Do not interpret the current CHE estimates as final real-expenditure estimates.
 
-## Skills demonstrated
+## References\n\n- Ghiasvand, H. et al. (2015). “Catastrophic Health Expenditure Among Iranian Rural and Urban Households, 2013–2014.” *Iranian Red Crescent Medical Journal*. DOI: 10.5812/ircmj.30974.\n- Yazdi-Feyzabadi, V. et al. (2018). “Prevalence and intensity of catastrophic health care expenditures in Iran from 2008 to 2015.” *International Journal for Equity in Health*. DOI: 10.1186/s12939-018-0743-y.\n- Household Expenditure and Income Surveys of Iran, Chapter 1 (sample design and rotating-panel feature): https://m-hoseini.github.io/HEIS/introduction.html\n\n## Skills demonstrated
 
 - R data management and validation
 - Household survey data construction
