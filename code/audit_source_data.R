@@ -209,25 +209,98 @@ design_candidate_fields <- variable_inventory |>
 
 # C11 is preserved as a raw category here. The audit does not assume its
 # coding until the 1393 codebook and source values have been reconciled.
+# Compare original and alternate income-rank and household-size fields.
+# These diagnostics do not choose a preferred variable; the codebook must
+# establish the intended definitions before the analysis specification changes.
 income_rank_distribution <- bind_rows(
   lapply(list(Rural = rural_households, Urban = urban_households), function(data) {
-    if (!("C11" %in% names(data))) return(NULL)
-    x <- as.character(data$C11)
-    tab <- as.data.frame(table(x, useNA = "ifany"), stringsAsFactors = FALSE)
-    names(tab) <- c("C11_value", "unweighted_households")
-    if ("weight" %in% names(data)) {
-      tab$weighted_households <- vapply(
-        tab$C11_value,
-        function(level) sum(as.numeric(data$weight)[ifelse(is.na(data$C11), "(Missing)", as.character(data$C11)) == level], na.rm = TRUE),
-        numeric(1)
-      )
-    } else {
-      tab$weighted_households <- NA_real_
-    }
-    tab$survey_residence <- unique(data$survey_residence)
-    tab
+    bind_rows(lapply(intersect(c("C11", "C11New"), names(data)), function(variable) {
+      x <- as.character(data[[variable]])
+      w <- suppressWarnings(as.numeric(as.character(data$weight)))
+      total_exp <- suppressWarnings(as.numeric(as.character(data$GHazineh)))
+      food_exp <- suppressWarnings(as.numeric(as.character(data$VKhorak)))
+
+      tibble(
+        survey_residence = unique(data$survey_residence),
+        income_variable = variable,
+        category = x,
+        analysis_weight = w,
+        total_expenditure = total_exp,
+        food_expenditure = food_exp
+      ) |>
+        filter(!is.na(category)) |>
+        group_by(survey_residence, income_variable, category) |>
+        summarise(
+          unweighted_households = n(),
+          weighted_households = sum(analysis_weight, na.rm = TRUE),
+          weighted_mean_total_expenditure = weighted.mean(
+            total_expenditure, analysis_weight, na.rm = TRUE
+          ),
+          weighted_mean_food_expenditure = weighted.mean(
+            food_expenditure, analysis_weight, na.rm = TRUE
+          ),
+          .groups = "drop"
+        )
+    }))
   })
 )
+
+income_rank_crosswalk <- bind_rows(
+  lapply(list(Rural = rural_households, Urban = urban_households), function(data) {
+    if (!all(c("C11", "C11New") %in% names(data))) return(NULL)
+    tibble(
+      survey_residence = unique(data$survey_residence),
+      C11 = as.character(data$C11),
+      C11New = as.character(data$C11New)
+    ) |>
+      count(survey_residence, C11, C11New, name = "households") |>
+      group_by(survey_residence, C11) |>
+      mutate(share_within_C11 = households / sum(households)) |>
+      ungroup()
+  })
+)
+
+household_size_crosswalk <- bind_rows(
+  lapply(list(Rural = rural_households, Urban = urban_households), function(data) {
+    if (!all(c("C01", "C01New") %in% names(data))) return(NULL)
+    tibble(
+      survey_residence = unique(data$survey_residence),
+      C01 = as.character(data$C01),
+      C01New = as.character(data$C01New)
+    ) |>
+      count(survey_residence, C01, C01New, name = "households") |>
+      group_by(survey_residence, C01) |>
+      mutate(share_within_C01 = households / sum(households)) |>
+      ungroup()
+  })
+)
+
+# Fasl and block are candidate survey-design fields, not confirmed strata
+# or PSU identifiers. Report their empirical structure without assigning
+# design roles based on names alone.
+sampling_candidate_summary <- bind_rows(
+  lapply(list(Rural = rural_households, Urban = urban_households), function(data) {
+    if (!all(c("Fasl", "block", "weight") %in% names(data))) return(NULL)
+    tibble(
+      survey_residence = unique(data$survey_residence),
+      Fasl = as.character(data$Fasl),
+      block = as.character(data$block),
+      analysis_weight = suppressWarnings(as.numeric(as.character(data$weight)))
+    ) |>
+      group_by(survey_residence, Fasl) |>
+      summarise(
+        household_rows = n(),
+        distinct_blocks = n_distinct(block),
+        blocks_with_multiple_households = sum(table(block) > 1),
+        min_households_per_block = min(as.integer(table(block))),
+        median_households_per_block = median(as.integer(table(block))),
+        max_households_per_block = max(as.integer(table(block))),
+        sum_weights = sum(analysis_weight, na.rm = TRUE),
+        .groups = "drop"
+      )
+  })
+)
+
 
 # Summary of the full sample and its match to the medical table.
 sample_summary <- households |>
@@ -247,7 +320,32 @@ write.csv(design_candidate_fields, "outputs/diagnostics/design_candidate_fields.
 write.csv(sample_summary, "outputs/diagnostics/household_sample_summary.csv", row.names = FALSE)
 
 if (!is.null(income_rank_distribution)) {
-  write.csv(income_rank_distribution, "outputs/diagnostics/C11_value_distribution.csv", row.names = FALSE)
+  write.csv(
+  income_rank_distribution,
+  "outputs/diagnostics/income_rank_candidate_distribution.csv",
+  row.names = FALSE
+)
+if (!is.null(income_rank_crosswalk)) {
+  write.csv(
+    income_rank_crosswalk,
+    "outputs/diagnostics/C11_C11New_crosswalk.csv",
+    row.names = FALSE
+  )
+}
+if (!is.null(household_size_crosswalk)) {
+  write.csv(
+    household_size_crosswalk,
+    "outputs/diagnostics/C01_C01New_crosswalk.csv",
+    row.names = FALSE
+  )
+}
+if (!is.null(sampling_candidate_summary)) {
+  write.csv(
+    sampling_candidate_summary,
+    "outputs/diagnostics/Fasl_block_design_candidates.csv",
+    row.names = FALSE
+  )
+}
 }
 
 summary_lines <- c(
