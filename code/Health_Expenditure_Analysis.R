@@ -651,13 +651,15 @@ final_health_data <- final_health_data |>
 
 final_health_data <- final_health_data |>
   mutate(
-    # CTP equals total expenditure less the greater of actual food
-    # expenditure and estimated subsistence expenditure.
-    capacity_to_pay = total_expenditure - pmax(
+    # Following the WHO-style rule used in the benchmark literature:
+    # subtract subsistence expenditure when food spending reaches it;
+    # otherwise subtract observed food expenditure.
+    # This is total expenditure less the smaller of the two amounts.
+    capacity_to_pay = total_expenditure - pmin(
       food_expenditure,
       adjusted_subsistence_expenditure
     ),
-    capacity_to_pay_total_rank = total_expenditure - pmax(
+    capacity_to_pay_total_rank = total_expenditure - pmin(
       food_expenditure,
       adjusted_subsistence_expenditure_total_rank
     )
