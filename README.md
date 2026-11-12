@@ -157,6 +157,8 @@ GitHub Actions is configured to run when changes are pushed to `main`, when a pu
 
 The workflow checks out the repository, sets up R, extracts the household Excel files, inventories the original 1393 archive, audits household/medical-record coverage and candidate survey identifiers, installs the R dependencies, runs the analysis, validates the expected outputs, and uploads the generated `outputs/` directory as a workflow artifact.
 
+The workflow also performs a schema-only inventory of the original Access database stored in `data/raw/93.rar`. It extracts the database into the runner's temporary directory, records table names, column definitions, and declared relationships with `mdbtools`, and removes the temporary extraction when the job ends. It does not export household-level records. The inventory is uploaded with the other diagnostic outputs for inspection.
+
 The workflow is an execution check; a successful run does not by itself validate the underlying data definitions or research methodology.
 
 ## Interpretation and limitations
