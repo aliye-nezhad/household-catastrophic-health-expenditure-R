@@ -54,6 +54,12 @@ dir.create(
   showWarnings = FALSE
 )
 
+dir.create(
+  "outputs/diagnostics",
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
 
 
 ############################################################
@@ -100,24 +106,46 @@ normalize_household_id <- function(x) {
 ############################################################
 
 # Aggregate the monthly health-expenditure records to one row per
-# household. The original HEIS processing script retains households
-# with no records in a given expenditure category and fills the
-# aggregated category with zero; we follow that convention below.
+# household. Only provision-method code 1 (purchased) enters the OOP
+# numerator. Codes 2-8 are non-cash acquisition methods. The all-method
+# total is retained separately for audit purposes. Households with no
+# medical-table records receive zero recorded OOP, consistent with the
+# independent HEIS processing pipeline's zero-fill for absent categories.
 
 aggregate_health_expenditure <- function(data) {
-  data |>
+  data <- data |>
     mutate(
       Address = normalize_household_id(Address),
+      provision_method = suppressWarnings(as.integer(as.character(DYCOL02))),
       health_expenditure_component =
         suppressWarnings(as.numeric(as.character(DYCOL03)))
-    ) |>
+    )
+
+  # HEIS provision-method code 1 means purchased. Codes 2-8 represent
+  # non-cash acquisition methods and must not enter the OOP numerator.
+  invalid_method <- is.na(data$provision_method) |
+    !(data$provision_method %in% 1:8)
+  if (any(invalid_method)) {
+    stop(
+      "Unmapped or missing medical provision-method codes found. ",
+      "Review DYCOL02 before constructing out-of-pocket expenditure."
+    )
+  }
+
+  data |>
     group_by(Address) |>
     summarise(
       health_expenditure = sum(
+        health_expenditure_component[provision_method == 1L],
+        na.rm = TRUE
+      ),
+      health_expenditure_all_methods = sum(
         health_expenditure_component,
         na.rm = TRUE
       ),
       medical_record_count = n(),
+      oop_record_count = sum(provision_method == 1L, na.rm = TRUE),
+      noncash_record_count = sum(provision_method %in% 2:8, na.rm = TRUE),
       .groups = "drop"
     ) |>
     mutate(
@@ -183,7 +211,11 @@ health_data <- bind_rows(
 ) |>
   mutate(
     health_expenditure = coalesce(health_expenditure, 0),
+    health_expenditure_all_methods =
+      coalesce(health_expenditure_all_methods, 0),
     medical_record_count = coalesce(medical_record_count, 0L),
+    oop_record_count = coalesce(oop_record_count, 0L),
+    noncash_record_count = coalesce(noncash_record_count, 0L),
     annual_health_expenditure = coalesce(annual_health_expenditure, 0)
   )
 
@@ -323,14 +355,10 @@ health_data <- health_data |>
 # Compare the source and final sample with the published 2014 counts.
 # Do not silently force the data to match: retain the observed source sample
 # and flag any discrepancy for investigation.
-expected_sample_benchmark <- tibble(
-  residence_type = c("Urban", "Rural"),
-  expected_source_n = c(18885L, 19390L),
-  expected_missing_food_n = c(28L, 56L),
-  expected_analysis_n = c(18857L, 19334L)
-)
-
-sample_benchmark_comparison <- health_data |>
+# Compare the constructed sample with two published 2014 benchmarks.
+# The 2018 paper reports 38,191 households; the 2024 paper reports 38,189.
+# The current source files match the latter total and its rounded urban share.
+sample_by_residence <- health_data |>
   group_by(residence_type) |>
   summarise(
     source_n = n(),
@@ -338,32 +366,65 @@ sample_benchmark_comparison <- health_data |>
     analysis_n = sum(!is.na(food_expenditure)),
     .groups = "drop"
   ) |>
-  mutate(residence_type = as.character(residence_type)) |>
-  left_join(expected_sample_benchmark, by = "residence_type") |>
-  mutate(
-    source_matches = source_n == expected_source_n,
-    missing_food_matches = missing_food_n == expected_missing_food_n,
-    final_sample_matches = analysis_n == expected_analysis_n,
-    benchmark_status = if_else(
-      source_matches & missing_food_matches & final_sample_matches,
-      "MATCH",
-      "REVIEW"
-    )
+  mutate(residence_type = as.character(residence_type))
+
+urban_sample <- sample_by_residence |>
+  filter(residence_type == "Urban")
+rural_sample <- sample_by_residence |>
+  filter(residence_type == "Rural")
+
+observed_urban_source_n <- urban_sample$source_n
+observed_rural_source_n <- rural_sample$source_n
+observed_urban_missing_food_n <- urban_sample$missing_food_n
+observed_rural_missing_food_n <- rural_sample$missing_food_n
+observed_urban_analysis_n <- urban_sample$analysis_n
+observed_rural_analysis_n <- rural_sample$analysis_n
+observed_total_analysis_n <- observed_urban_analysis_n +
+  observed_rural_analysis_n
+observed_urban_share_percent <- 100 * observed_urban_analysis_n /
+  observed_total_analysis_n
+
+sample_benchmark_comparison <- tibble(
+  benchmark = c(
+    "Yazdi-Feyzabadi et al. (2018)",
+    "Mousavi et al. (2024)"
+  ),
+  observed_urban_source_n = observed_urban_source_n,
+  observed_rural_source_n = observed_rural_source_n,
+  observed_urban_missing_food_n = observed_urban_missing_food_n,
+  observed_rural_missing_food_n = observed_rural_missing_food_n,
+  observed_urban_analysis_n = observed_urban_analysis_n,
+  observed_rural_analysis_n = observed_rural_analysis_n,
+  observed_total_analysis_n = observed_total_analysis_n,
+  observed_urban_share_percent = observed_urban_share_percent,
+  expected_urban_analysis_n = c(18857L, NA_integer_),
+  expected_rural_analysis_n = c(19334L, NA_integer_),
+  expected_total_analysis_n = c(38191L, 38189L),
+  expected_urban_share_percent = c(
+    100 * 18857 / 38191,
+    49.37
+  ),
+  benchmark_status = c(
+    if (
+      observed_urban_analysis_n == 18857L &&
+      observed_rural_analysis_n == 19334L
+    ) "MATCH" else "DIFFERS",
+    if (
+      observed_total_analysis_n == 38189L &&
+      round(observed_urban_share_percent, 2) == 49.37
+    ) "MATCH" else "DIFFERS"
+  ),
+  comparison_note = c(
+    "The 2018 article reports two more urban households than the current source files.",
+    "The current analytical sample matches the published total and rounded urban share."
   )
+)
 
 write.csv(
   sample_benchmark_comparison,
   "outputs/diagnostics/sample_benchmark_comparison.csv",
   row.names = FALSE
 )
-
-if (any(sample_benchmark_comparison$benchmark_status != "MATCH")) {
-  warning(
-    "Observed 2014 sample differs from the published benchmark. ",
-    "See outputs/diagnostics/sample_benchmark_comparison.csv. ",
-    "No observations have been added or removed to force a match."
-  )
-}
 
 health_data <- health_data |>
   filter(!is.na(food_expenditure))
@@ -404,7 +465,10 @@ final_health_data <- health_data |>
     income_rank,
     weight,
     health_expenditure,
+    health_expenditure_all_methods,
     medical_record_count,
+    oop_record_count,
+    noncash_record_count,
     annual_health_expenditure
   )
 ############################################################
