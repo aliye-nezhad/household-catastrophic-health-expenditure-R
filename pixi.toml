@@ -22,4 +22,4 @@ mdbtools = "*"
 python = "3.12.*"
 
 [tasks]
-reproduce = "bash code/reproduce.sh"
+reproduce = "bash .github/scripts/reproduce.sh"

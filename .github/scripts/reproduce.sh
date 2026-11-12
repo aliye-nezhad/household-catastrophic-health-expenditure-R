@@ -2,11 +2,12 @@
 set -euo pipefail
 
 if [[ $# -gt 1 ]]; then
-  echo "Usage: bash code/reproduce.sh [output-parent-directory]" >&2
+  printf 'Usage: bash %s [output-parent-directory]\n' "${BASH_SOURCE[0]}" >&2
   exit 2
 fi
 
-repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+repo_root="$(cd -- "$script_dir/../.." && pwd -P)"
 cd -- "$repo_root"
 
 seven_zip="$(command -v 7zz || command -v 7z)" || {
@@ -46,7 +47,7 @@ export TZ=UTC LC_ALL=C.UTF-8 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
     test -s "data/processed/$area.xls"
   done
   "$seven_zip" l data/raw/93.rar > outputs/diagnostics/93_archive_inventory.txt
-  bash code/audit_access_database.sh
+  bash "$script_dir/audit_access_database.sh"
   Rscript --vanilla code/Health_Expenditure_Analysis.R
   Rscript --vanilla code/validate_reproduction.R
 )

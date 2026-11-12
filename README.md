@@ -44,6 +44,19 @@ The weighted monthly averages for total and food expenditure agree with the publ
 
 The baseline uses household weights and treats households as independent sampling units. A separate calculation clusters standard errors by province to show how inference changes. Estimating variance for the full survey design requires the original strata and primary sampling-unit identifiers. [HEIS sample design](https://m-hoseini.github.io/HEIS/introduction.html)
 
+## Repository structure
+
+| Path | Contents |
+| --- | --- |
+| [`code/`](code) | [Main R analysis](code/Health_Expenditure_Analysis.R), [source-data checks](code/audit_source_data.R), and [result validation](code/validate_reproduction.R). |
+| [`data/`](data) | [1393 survey files](data/raw), [source notes](data/README.md), and [input hashes](data/raw.sha256). |
+| [`outputs/`](outputs) | Saved results and the [guide to the output files](outputs/README.md). |
+| [`outputs/tables/`](outputs/tables) | Sample statistics, regression tables, and coefficient estimates. |
+| [`outputs/figures/`](outputs/figures) | Catastrophic expenditure prevalence by economic rank. |
+| [`outputs/diagnostics/`](outputs/diagnostics) | Survey linkage checks, published comparisons, and sensitivity results. |
+| [`pixi.toml`](pixi.toml) and [`pixi.lock`](pixi.lock) | The reproduction command and locked R environment. |
+| [`.github/`](.github) | Repository workflow and run helpers. |
+
 ## Reproducing the results
 
 Install Pixi 0.84.2 or later on x86-64 Linux. On Windows, run the commands inside WSL2. The source files are included and the lockfile specifies R 4.4.3 and the required packages. The first run downloads the environment from conda-forge. [Pixi releases](https://github.com/prefix-dev/pixi/releases)
@@ -55,8 +68,6 @@ pixi run --locked reproduce
 ```
 
 The command prints the path to the full results under `reproduced/run-*/`. For the results in this repository, start with the [sample workbook](outputs/tables/summary_statistics.xlsx), [main regression](outputs/tables/regression_results.docx), and [economic-rank figure](outputs/figures/figure1_economic_quintile_CHE.png). The [results guide](outputs/README.md) links the coefficient estimates, sensitivity tables, and published comparison.
-
-The main analysis is in [`code/Health_Expenditure_Analysis.R`](code/Health_Expenditure_Analysis.R).
 
 ## Author
 
