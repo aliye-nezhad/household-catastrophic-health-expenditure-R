@@ -928,7 +928,7 @@ modelsummary(
 # 28. Robustness Analysis: Urban Households
 ############################################################
 
-# Estimate model for urban households only.
+# Estimate model for urban households only, using the same neutral economic-rank field.
 
 urban_design <- subset(
   
@@ -942,7 +942,7 @@ urban_design <- subset(
 model_urban <- svyglm(
   
   catastrophic_health_expenditure ~
-    income_rank +
+    economic_rank +
     household_size,
   
   design = urban_design,
@@ -963,7 +963,7 @@ summary(model_urban)
 # The previous large-household logit produced extreme odds ratios and
 # standard errors, consistent with sparse cells or separation. Do not
 # present that unstable specification as a substantive result. Export
-# the outcome support by income category for transparent diagnosis.
+# the outcome support by economic-rank category for transparent diagnosis.
 
 large_household_support <- final_health_data |>
   filter(
@@ -1224,7 +1224,7 @@ ggsave(
 
 model_province <- svyglm(
   catastrophic_health_expenditure ~
-    income_rank +
+    economic_rank +
     residence_type +
     household_size +
     gender +
@@ -1236,7 +1236,7 @@ model_province <- svyglm(
 )
 
 
-# Income and rural interaction
+# Economic-rank and rural interaction
 
 model_interaction <- svyglm(
   catastrophic_health_expenditure ~
@@ -1254,7 +1254,7 @@ model_interaction <- svyglm(
 
 model_CHE30 <- svyglm(
   cata_30 ~
-    income_rank +
+    economic_rank +
     residence_type +
     household_size +
     gender +
@@ -1267,7 +1267,7 @@ model_CHE30 <- svyglm(
 
 model_CHE50 <- svyglm(
   cata_50 ~
-    income_rank +
+    economic_rank +
     residence_type +
     household_size +
     gender +
