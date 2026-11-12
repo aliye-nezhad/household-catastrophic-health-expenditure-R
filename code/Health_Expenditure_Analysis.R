@@ -352,37 +352,55 @@ health_data <- health_data |>
   )
 
 # The benchmark excludes households with unreported food expenditure.
-# Compare the source and final sample with the published 2014 counts.
-# Do not silently force the data to match: retain the observed source sample
-# and flag any discrepancy for investigation.
-# Compare the constructed sample with two published 2014 benchmarks.
-# The 2018 paper reports 38,191 households; the 2024 paper reports 38,189.
-# The current source files match the latter total and its rounded urban share.
-sample_by_residence <- health_data |>
-  group_by(residence_type) |>
-  summarise(
-    source_n = n(),
-    missing_food_n = sum(is.na(food_expenditure)),
-    analysis_n = sum(!is.na(food_expenditure)),
-    .groups = "drop"
-  ) |>
-  mutate(residence_type = as.character(residence_type))
+# Build one scalar summary per residence directly from the household-level
+# data. This avoids relying on vector comparisons inside scalar if() calls.
+summarise_sample_by_residence <- function(data, residence) {
+  data |>
+    filter(as.character(residence_type) == residence) |>
+    summarise(
+      residence_type = residence,
+      source_n = n(),
+      missing_food_n = sum(is.na(food_expenditure)),
+      analysis_n = sum(!is.na(food_expenditure))
+    )
+}
+
+sample_by_residence <- bind_rows(
+  summarise_sample_by_residence(health_data, "Urban"),
+  summarise_sample_by_residence(health_data, "Rural")
+)
 
 urban_sample <- sample_by_residence |>
   filter(residence_type == "Urban")
 rural_sample <- sample_by_residence |>
   filter(residence_type == "Rural")
 
-observed_urban_source_n <- urban_sample$source_n
-observed_rural_source_n <- rural_sample$source_n
-observed_urban_missing_food_n <- urban_sample$missing_food_n
-observed_rural_missing_food_n <- rural_sample$missing_food_n
-observed_urban_analysis_n <- urban_sample$analysis_n
-observed_rural_analysis_n <- rural_sample$analysis_n
+if (nrow(urban_sample) != 1L || nrow(rural_sample) != 1L) {
+  stop("Expected exactly one sample-summary row for each residence category.")
+}
+
+observed_urban_source_n <- urban_sample$source_n[[1]]
+observed_rural_source_n <- rural_sample$source_n[[1]]
+observed_urban_missing_food_n <- urban_sample$missing_food_n[[1]]
+observed_rural_missing_food_n <- rural_sample$missing_food_n[[1]]
+observed_urban_analysis_n <- urban_sample$analysis_n[[1]]
+observed_rural_analysis_n <- rural_sample$analysis_n[[1]]
 observed_total_analysis_n <- observed_urban_analysis_n +
   observed_rural_analysis_n
 observed_urban_share_percent <- 100 * observed_urban_analysis_n /
   observed_total_analysis_n
+
+benchmark_2018_status <- if (
+  observed_urban_analysis_n == 18857L &&
+    observed_rural_analysis_n == 19334L
+) "MATCH" else "DIFFERS"
+
+# Mousavi et al. (2024) report the total and rounded urban share, not the
+# exact urban/rural analytical counts.
+benchmark_2024_status <- if (
+  observed_total_analysis_n == 38189L &&
+    round(observed_urban_share_percent, 2) == 49.37
+) "CONSISTENT_WITH_REPORTED_TOTAL_AND_SHARE" else "DIFFERS"
 
 sample_benchmark_comparison <- tibble(
   benchmark = c(
@@ -405,18 +423,12 @@ sample_benchmark_comparison <- tibble(
     49.37
   ),
   benchmark_status = c(
-    if (
-      observed_urban_analysis_n == 18857L &&
-      observed_rural_analysis_n == 19334L
-    ) "MATCH" else "DIFFERS",
-    if (
-      observed_total_analysis_n == 38189L &&
-      round(observed_urban_share_percent, 2) == 49.37
-    ) "MATCH" else "DIFFERS"
+    benchmark_2018_status,
+    benchmark_2024_status
   ),
   comparison_note = c(
     "The 2018 article reports two more urban households than the current source files.",
-    "The current analytical sample matches the published total and rounded urban share."
+    "The 2024 article reports 38,189 households and a rounded urban share of 49.37%; exact residence-specific counts are not reported in its sample-size table."
   )
 )
 
