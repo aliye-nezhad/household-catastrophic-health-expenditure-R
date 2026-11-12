@@ -1096,6 +1096,34 @@ write.csv(
   row.names = FALSE
 )
 
+# Compare the current weighted CHE prevalence with the published 2014
+# benchmark reported by Yazdi-Feyzabadi et al. (2018). This is a diagnostic,
+# not an assertion that the measures are identical: CPI treatment, numerator
+# scope, and sampling-design implementation still require reconciliation.
+published_che_benchmark <- tibble(
+  residence_group = c("All", "Rural", "Urban"),
+  published_2014_weighted_CHE_prevalence_percent = c(3.15, 4.38, 2.69)
+)
+
+che_benchmark_comparison <- che_construction_diagnostics |>
+  select(residence_group, weighted_CHE_prevalence) |>
+  mutate(
+    observed_weighted_CHE_prevalence_percent =
+      100 * weighted_CHE_prevalence
+  ) |>
+  left_join(published_che_benchmark, by = "residence_group") |>
+  mutate(
+    difference_percentage_points =
+      observed_weighted_CHE_prevalence_percent -
+      published_2014_weighted_CHE_prevalence_percent
+  )
+
+write.csv(
+  che_benchmark_comparison,
+  "outputs/diagnostics/che_benchmark_comparison.csv",
+  row.names = FALSE
+)
+
 if (any(che_construction_diagnostics$nonpositive_capacity_to_pay_n > 0) ||
     any(che_construction_diagnostics$nonfinite_health_ratio_n > 0)) {
   stop(
@@ -1366,6 +1394,7 @@ expected_outputs <- c(
   "outputs/tables/large_household_model_status.txt",
   "outputs/tables/missing_data_summary.csv",
   "outputs/diagnostics/che_construction_diagnostics.csv",
+  "outputs/diagnostics/che_benchmark_comparison.csv",
   "outputs/diagnostics/analysis_warnings.txt",
   "outputs/figures/figure1_economic_quintile_CHE.png"
 )
