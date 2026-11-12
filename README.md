@@ -1,179 +1,44 @@
-# Determinants of Household Catastrophic Health Expenditure
+# Household Catastrophic Health Expenditure in Iran
 
-## Overview
+An R workflow for constructing a household-level measure of catastrophic health expenditure (CHE) from the Iranian 1393 Household Expenditure and Income Survey (2014–15). The analysis estimates conditional associations between CHE and household characteristics using survey-weighted logistic regression.
 
-This repository contains an R workflow for constructing household-level catastrophic health expenditure (CHE) measures from Iranian household survey data, estimating survey-weighted logistic regression models, conducting subgroup and threshold-sensitivity analyses, and exporting tables and figures.
+## Reproduce the analysis
 
-The project is an applied microeconometrics and R coding sample. The regression estimates describe conditional associations; they should not be interpreted as causal effects.
+Use 64-bit Linux. On Windows, use a Linux distribution in WSL2 and clone the repository inside it. Install Pixi 0.84.2. [Pixi release](https://github.com/prefix-dev/pixi/releases/tag/v0.84.2)
 
-## Research question
-
-How are household socioeconomic and demographic characteristics associated with catastrophic health expenditure among Iranian households?
-
-## Data
-
-The workflow combines household demographic and expenditure information with health-expenditure records and sampling weights.
-
-| Variable | Description | Role |
-| --- | --- | --- |
-| `catastrophic_health_expenditure` | CHE indicator based on the baseline threshold | Dependent variable |
-| `annual_health_expenditure` | Annualized household out-of-pocket health expenditure | CHE numerator |
-| `capacity_to_pay` | Household expenditure remaining after subsistence needs | CHE denominator |
-| `income_rank` | Household economic-position indicator | Main socioeconomic variable |
-| `residence_type` | Urban/rural classification | Household characteristic |
-| `household_size` | Number of household members | Household characteristic |
-| `age` | Age of household head | Demographic characteristic |
-| `gender` | Gender of household head | Demographic characteristic |
-| `literacy` | Literacy status of household head | Demographic characteristic |
-
-### Input files
-
-The committed source files are stored in `data/raw/`:
-
-- `R93P3S06.rds` and `U93P3S06.rds`: household health-expenditure components used directly by the R script.
-- `R93.rar` and `U93.rar`: archives containing the rural and urban household Excel files (`R93.xls` and `U93.xls`).
-- `93.rar`: archive containing the original Access database. It is retained as a source archive but is not required by the current R workflow.
-
-The Excel files are extracted at runtime into `data/processed/`. This is a generated directory and is excluded from version control.
-
-## Catastrophic health expenditure construction
-
-The script documents its implementation as following the Xu et al. (2003) framework.
-
-Capacity to pay is defined as total household expenditure after subsistence needs. The baseline CHE indicator is:
-
-```text
-CHE = 1 if annual out-of-pocket health expenditure / capacity to pay >= 0.40
-CHE = 0 otherwise
-```
-
-The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds.
-
-The implementation uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are methodological choices in the current script and should be checked against the intended source specification before substantive interpretation.
-
-## Empirical workflow
-
-The R script:
-
-1. Imports the committed RDS health-expenditure components.
-2. Aggregates health expenditure to the household level.
-3. Reads the rural and urban household files extracted from the RAR archives.
-4. Merges the household and health-expenditure information.
-5. Constructs demographic, socioeconomic, geographic, and expenditure variables.
-6. Calculates subsistence expenditure, capacity to pay, and CHE indicators.
-7. Declares a survey design using the household sampling weights.
-8. Estimates survey-weighted logistic regressions.
-9. Conducts urban-household and large-household subgroup analyses.
-10. Estimates province fixed-effects and income-residence interaction specifications.
-11. Estimates alternative CHE thresholds and exports tables and figures.
-
-## Repository structure
-
-```text
-household-catastrophic-health-expenditure-R/
-├── .github/
-│   └── workflows/
-│       └── r-reproducibility.yml
-├── .gitignore
-├── LICENSE
-├── README.md
-├── code/
-│   └── Health_Expenditure_Analysis.R
-├── data/
-│   ├── README.md
-│   └── raw/
-│       ├── 93.rar
-│       ├── R93.rar
-│       ├── U93.rar
-│       ├── R93P3S06.rds
-│       └── U93P3S06.rds
-└── outputs/
-    ├── figures/
-    │   └── figure1_income_quintile_CHE.png
-    └── tables/
-        ├── summary_statistics.xlsx
-        ├── regression_results.docx
-        ├── model_comparison.docx
-        ├── CHE_final_regression_table.docx
-        ├── CHE_threshold_robustness.docx
-        └── Table_CHE_by_income_quintile.csv
-```
-
-## Requirements
-
-- R 4.4 (the version configured in GitHub Actions)
-- `dplyr`
-- `readxl`
-- `writexl`
-- `modelsummary`
-- `labelled`
-- `survey`
-- `ggplot2`
-- `flextable`
-- `officer`
-- 7-Zip, to extract the two household Excel files from their RAR archives
-
-The workflow installs the listed R packages at runtime. A committed package lockfile has not yet been added, so package versions are not currently pinned.
-
-## Reproduction
-
-Run the following commands from the repository root.
-
-First install 7-Zip and extract the two household files:
+Run this command from the repository root.
 
 ```bash
-mkdir -p data/processed
-7z x data/raw/R93.rar -odata/processed -y
-7z x data/raw/U93.rar -odata/processed -y
+pixi run --locked reproduce
 ```
 
-Install the R packages:
+Pixi installs R 4.4.3, the R packages, 7-Zip, MDB Tools and Python from the committed lockfile. The first installation downloads the locked packages from conda-forge. The runner checks the five input hashes, extracts the source files in a private temporary directory, runs the audits and analysis, and publishes the outputs after the checks pass.
 
-```r
-install.packages(c(
-  "dplyr",
-  "readxl",
-  "openxlsx",
-  "modelsummary",
-  "labelled",
-  "survey",
-  "ggplot2",
-  "flextable",
-  "officer"
-))
-```
+Each successful invocation prints its new `reproduced/run-*/` directory. The tracked `outputs/` directory contains earlier snapshots. GitHub Actions runs the same command on Ubuntu 24.04 and provides the current results under the `household-che-research-outputs` artifact.
 
-Run the analysis:
+| Result | Where to find it |
+| --- | --- |
+| Regression coefficients, standard errors and model counts | `tables/regression_coefficients.csv` and four Word tables |
+| Descriptive statistics and weighted CHE by economic quintile | `tables/summary_statistics.xlsx`, `tables/Table_CHE_by_economic_quintile.csv`, `figures/` |
+| Source provenance, interview-month linkage and sample comparison | `diagnostics/access_linkage.csv`, `diagnostics/sample_benchmark_comparison.csv` |
+| CHE definition sensitivity and comparison with published estimates | `diagnostics/che_specification_sensitivity.csv`, `diagnostics/che_benchmark_comparison.csv` |
+| Baseline inference with province clustering | `diagnostics/baseline_inference_sensitivity.csv` |
+| Run provenance | `diagnostics/input_sha256.txt`, `diagnostics/session_info.txt` |
 
-```r
-source("code/Health_Expenditure_Analysis.R")
-```
+## Data and measurement
 
-The script writes tables to `outputs/tables/` and the income-quintile figure to `outputs/figures/`. It performs a final check that the expected output files exist and are non-empty.
+The pipeline starts with 38,275 households from the rural and urban summary workbooks. It uses the household address to link the medical module and assigns zero recorded Table 6 expenditure to households with no Table 6 records. Excluding 86 households with missing food expenditure leaves 38,189 households for CHE construction. The Access audit verifies a valid interview month for every workbook household and medical record and matches all 68,217 RDS medical records to the original Table 6 data after normalizing their storage formats. [Input inventory](data/README.md)
 
-## Automated workflow
+The baseline numerator sums purchased Table 6 medical items (acquisition code 1) and multiplies the monthly amount by 12. The denominator treats `GHazineh` and `VKhorak` as annual total and food expenditures. Capacity to pay equals total expenditure minus the smaller of observed food expenditure and estimated subsistence expenditure. The baseline CHE indicator applies a 40% threshold to the ratio of these two amounts. The analysis also applies 30% and 50% thresholds.
 
-GitHub Actions is configured to run when changes are pushed to `main`, when a pull request targets `main`, or when the workflow is manually dispatched.
+To estimate subsistence expenditure, the analysis divides food expenditure by household size raised to 0.56. Within each residence group, it takes the weighted mean among households whose food share is strictly between 45% and 55%, then scales the resulting poverty line to each household's size. A sensitivity analysis uses the 45th–55th percentile of total consumption to select the reference group. A further diagnostic totals Table 6 records across all acquisition methods, including noncash methods. [Yazdi-Feyzabadi et al. (2018)](https://doi.org/10.1186/s12939-018-0743-y) · [Ghiasvand et al. (2015)](https://doi.org/10.5812/ircmj.30974)
 
-The workflow checks out the repository, sets up R, extracts the household Excel files, inventories the original 1393 archive, audits household/medical-record coverage and candidate survey identifiers, installs the R dependencies, runs the analysis, validates the expected outputs, and uploads the generated `outputs/` directory as a workflow artifact.
+The regressions use the original `C11` decile field as a categorical measure of economic rank. The analysis retains `C11New` for source diagnostics. Both derived fields need original metadata to establish whether they rank income or expenditure.
 
-The workflow is an execution check; a successful run does not by itself validate the underlying data definitions or research methodology.
+## Validation and limits
 
-## Interpretation and limitations
-
-- The estimates are conditional associations, not causal effects.
-- CHE estimates depend on the threshold and the construction of subsistence expenditure and capacity to pay.
-- Household survey estimates depend on the quality of the underlying survey variables, weights, and identifiers.
-- The current survey-design declaration uses `ids = ~1` and household weights. It does not explicitly model strata or clusters.
-- The current workflow does not yet pin package versions through a lockfile.
-- The source variable definitions, expenditure annualization, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
-
-## Skills demonstrated
-
-- R data management and validation
-- Household survey data construction
-- Survey-weighted descriptive analysis
-- Survey-weighted logistic regression
-- Subgroup, interaction, and sensitivity analysis
-- Reproducible output generation
-- Transparent documentation of empirical limitations
+- The automated checks compare the frozen sample and CHE prevalence with the earlier nominal run. They also verify the medical record linkage, model outputs, threshold ordering and report files.
+- At the 40% threshold, the weighted nominal CHE prevalence is **1.79% overall**, **2.50% rural** and **1.54% urban**. The corresponding 2014 published figures are 3.15%, 4.38% and 2.69%. Weighted monthly total and food expenditure match the published table at its reported precision. Monthly OOP and the estimated poverty line still differ. [Yazdi-Feyzabadi et al. (2018), Tables 2–3](https://doi.org/10.1186/s12939-018-0743-y)
+- The analytical sample contains 19,334 rural and 18,855 urban households. Its total and rounded urban share of 49.37% agree with the 2024 paper. The 2018 paper excludes 28 urban households with unreported food expenditure, compared with 30 in the frozen workbook. The comparison keeps those observed counts. [Mousavi et al. (2024), Table 1](https://doi.org/10.3961/jpmph.23.291) · [Yazdi-Feyzabadi et al. (2018), Table 1](https://doi.org/10.1186/s12939-018-0743-y)
+- The medical numerator is nominal. An item-level price adjustment requires the verified 1393 item crosswalk and monthly price indices, as well as a consistent price basis for the numerator and denominator. The independent HEIS script references `Global.rds` and `CPI.rds`. These inputs are unavailable in the public code checkout. The interview-month audit establishes the linkage needed for that adjustment. [Hoseini's HEIS documentation](https://m-hoseini.github.io/HEIS/cleaning-data.html) · [1393 processing script](https://github.com/m-hoseini/HEIS_script/blob/c0b7c6acc96447cd1baa2881e1929b6036c7c657/93.R)
+- The main regression tables use weights-only standard errors. The baseline sensitivity uses 31 province clusters, with the same point estimates. Full design-based variance estimation still requires confirmed 1393 strata and primary sampling units. The workbook's `Fasl` agrees with the quarter of the month preceding the interview for every linked household. The workbook's block field and its relation to the survey design require official metadata. [HEIS sample design](https://m-hoseini.github.io/HEIS/introduction.html)

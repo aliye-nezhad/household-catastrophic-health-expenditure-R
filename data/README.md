@@ -1,35 +1,13 @@
-# Raw Data
+# 1393 HEIS inputs
 
-This folder contains the original input files required for the household
-catastrophic health expenditure analysis.
+The Household Expenditure and Income Survey was collected by the Statistical Center of Iran. The 1393 round spans 2014–15. The pipeline uses the five frozen inputs below and verifies their SHA-256 hashes against `data/raw.sha256`. [HEIS documentation](https://m-hoseini.github.io/HEIS/introduction.html)
 
-The analysis uses Iranian household survey data and combines household-level
-information with health expenditure records to construct the analytical
-dataset.
-
-## Required Files
-
-| File | Description |
+| File under `data/raw/` | Role |
 | --- | --- |
-| `R93.rar` | Raw household survey data archive |
-| `U93.rar` | Raw household survey data archive |
-| `R93P3S06.rds` | Household expenditure-related data component |
-| `U93P3S06.rds` | Household expenditure-related data component |
+| `R93.rar`, `U93.rar` | Rural and urban household summary workbooks. The analysis uses `ADDRESS`, demographic fields, `GHazineh`, `VKhorak`, `C11`, `C11New` and `weight`. |
+| `R93P3S06.rds`, `U93P3S06.rds` | Rural and urban Table 6 medical records. `DYCOL01` is the item code, `DYCOL02` is the acquisition method and `DYCOL03` is the monthly amount. |
+| `93.rar` | Original Access database containing the Table 6 medical records and `MahMorajeh`, the household interview month. |
 
-## Data Processing
+The Access audit compares the entire four-field Table 6 record multiset against the RDS files and verifies the interview-month link for households and medical records. The RDS files store item codes numerically, so the comparison normalizes the Access text codes before sorting. Private temporary directories hold the extracted workbooks, database and record-level audit files during each run. The results contain aggregate tables and database metadata.
 
-The R workflow imports and processes these files to construct the household-level
-analytical dataset used for:
-
-- catastrophic health expenditure measurement
-- capacity-to-pay calculation
-- survey-weighted regression analysis
-- robustness and sensitivity analyses
-
-## Reproducibility Note
-
-The raw files are preserved with their original filenames because the analysis
-workflow expects these file names during import.
-
-The processed analytical dataset and generated outputs are created by the R
-workflow and are stored separately from the raw input files.
+The nominal analysis uses the workbooks' household expenditure totals and the committed medical extracts. The 1393 item-to-CPI crosswalk, monthly item price indices and official design identifiers are outstanding inputs for the price and variance comparisons. [Hoseini's processing notes](https://m-hoseini.github.io/HEIS/cleaning-data.html)

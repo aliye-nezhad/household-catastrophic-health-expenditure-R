@@ -2,7 +2,7 @@ name: R reproducibility
 
 on:
   push:
-    branches: [main]
+    branches: [main, "audit/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -10,8 +10,6 @@ on:
 permissions:
   contents: read
 
-# Keep only the newest run for a given branch. This prevents repeated
-# commits from leaving several identical dependency-install jobs running.
 concurrency:
   group: r-reproducibility-${{ github.ref }}
   cancel-in-progress: true
@@ -20,125 +18,34 @@ jobs:
   reproduce:
     name: Run household CHE analysis
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: "4.4"
-          use-public-rspm: true
-
-      - name: Install system libraries required by R packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            7zip \
-            pandoc \
-            libuv1-dev \
-            libfontconfig1-dev \
-            libfreetype6-dev \
-            libharfbuzz-dev \
-            libfribidi-dev \
-            libcairo2-dev \
-            libpng-dev \
-            libjpeg-dev \
-            libtiff-dev \
-            libwebp-dev \
-            libxml2-dev \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxt-dev
-
-          pandoc --version
-          if command -v 7zz >/dev/null 2>&1; then
-            7zz --help >/dev/null
-          elif command -v 7z >/dev/null 2>&1; then
-            7z --help >/dev/null
-          else
-            dpkg -L 7zip
-            exit 1
-          fi
-
-      - name: Extract required household Excel files
+      - name: Install Pixi 0.84.2
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p data/processed outputs/diagnostics
+          bin="$RUNNER_TEMP/pixi-bin"
+          mkdir -p "$bin"
+          archive="$RUNNER_TEMP/pixi.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 \
+            --output "$archive" \
+            https://github.com/prefix-dev/pixi/releases/download/v0.84.2/pixi-x86_64-unknown-linux-musl.tar.gz
+          printf '%s  %s\n' \
+            6d2a576bde0a7b26533a068fec0aea6e4ee21c36668efc1dc73fce90110906ae \
+            "$archive" | sha256sum --check
+          tar -xzf "$archive" -C "$bin"
+          echo "$bin" >> "$GITHUB_PATH"
 
-          if command -v 7zz >/dev/null 2>&1; then
-            SEVEN_ZIP="$(command -v 7zz)"
-          else
-            SEVEN_ZIP="$(command -v 7z)"
-          fi
+      - name: Reproduce from locked environment and check results
+        run: pixi run --locked reproduce
 
-          "$SEVEN_ZIP" x data/raw/R93.rar -odata/processed -y
-          "$SEVEN_ZIP" x data/raw/U93.rar -odata/processed -y
-
-          test -s data/processed/R93.xls
-          test -s data/processed/U93.xls
-
-          echo "=== Inventory of the additional 1393 archive ==="
-          "$SEVEN_ZIP" l data/raw/93.rar > outputs/diagnostics/93_archive_inventory.txt
-          cat outputs/diagnostics/93_archive_inventory.txt
-
-      - name: Install R dependencies
-        shell: Rscript {0}
-        run: |
-          packages <- c(
-            "dplyr",
-            "readxl",
-            "writexl",
-            "modelsummary",
-            "labelled",
-            "survey",
-            "ggplot2",
-            "flextable",
-            "officer",
-            "pandoc"
-          )
-
-          missing <- packages[
-            !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
-          ]
-
-          if (length(missing) > 0) {
-            message("Installing missing R packages: ", paste(missing, collapse = ", "))
-            # setup-r configures the public Posit Package Manager repository.
-            # Keeping its repository setting allows Linux binary packages to
-            # be used where available, while the system libraries above
-            # support source builds when needed.
-            install.packages(missing)
-          }
-
-          unavailable <- packages[
-            !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
-          ]
-
-          if (length(unavailable) > 0) {
-            stop(
-              "Required R packages remain unavailable: ",
-              paste(unavailable, collapse = ", ")
-            )
-          }
-
-          if (!nzchar(Sys.which("pandoc"))) {
-            stop("The system Pandoc executable is not available on PATH.")
-          }
-
-          system2("pandoc", "--version")
-
-      - name: Audit source-data coverage and survey identifiers
-        run: Rscript code/audit_source_data.R
-
-      - name: Run full analysis and validate outputs
-        run: Rscript code/Health_Expenditure_Analysis.R
-
-      - name: Upload generated research outputs
-        uses: actions/upload-artifact@v4
+      - name: Upload this run's validated outputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: household-che-research-outputs
-          path: outputs/
+          path: reproduced/run-*/
           if-no-files-found: error
           retention-days: 30
