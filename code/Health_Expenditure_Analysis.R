@@ -248,7 +248,8 @@ health_data <- health_data |>
     household_size = C01,
     total_expenditure = GHazineh,
     food_expenditure = VKhorak,
-    income_rank = C11
+    income_rank = C11New,
+    income_rank_unweighted = C11
   )
 
 
@@ -481,6 +482,7 @@ final_health_data <- health_data |>
     food_expenditure,
     food_share,
     income_rank,
+    income_rank_unweighted,
     weight,
     health_expenditure,
     health_expenditure_all_methods,
@@ -1107,17 +1109,27 @@ if (any(che_construction_diagnostics$nonpositive_capacity_to_pay_n > 0) ||
 
 # Income quintile analysis
 
-# C11 is stored as a 0-9 income-decile code in the 2014 files.
-# Map adjacent deciles into quintiles explicitly. ntile() would split
-# tied decile categories across quintiles and create artificial breaks.
+# C11New is used as the primary weighted income-decile candidate.
+# The source audit finds near-equal weighted totals across its ten categories
+# within each residence group, while original C11 has near-equal unweighted
+# counts. Official metadata confirmation remains outstanding.
+# Map adjacent deciles into quintiles explicitly; ntile() would split tied
+# categories and create artificial breaks.
 income_decile <- suppressWarnings(as.integer(as.character(final_health_data$income_rank)))
+income_decile_unweighted <- suppressWarnings(
+  as.integer(as.character(final_health_data$income_rank_unweighted))
+)
 if (any(!is.na(income_decile) & !(income_decile %in% 0:9))) {
+  stop("C11New contains values outside the expected 0-9 income-decile coding.")
+}
+if (any(!is.na(income_decile_unweighted) & !(income_decile_unweighted %in% 0:9))) {
   stop("C11 contains values outside the expected 0-9 income-decile coding.")
 }
 
 final_health_data <- final_health_data |>
   mutate(
     income_decile = income_decile,
+    income_decile_unweighted = income_decile_unweighted,
     income_quintile = case_when(
       income_decile %in% c(0L, 1L) ~ 1L,
       income_decile %in% c(2L, 3L) ~ 2L,
