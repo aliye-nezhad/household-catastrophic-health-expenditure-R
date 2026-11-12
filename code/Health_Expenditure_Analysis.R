@@ -155,7 +155,9 @@ aggregate_health_expenditure <- function(data) {
     ) |>
     mutate(
       # Table 6 is a monthly-recall expenditure table.
-      annual_health_expenditure = health_expenditure * 12
+      annual_health_expenditure = health_expenditure * 12,
+      annual_health_expenditure_all_methods =
+        health_expenditure_all_methods * 12
     )
 }
 
