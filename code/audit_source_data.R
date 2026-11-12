@@ -35,7 +35,7 @@ standardize_address <- function(data, label) {
 }
 
 read_households <- function(path, residence) {
-  data <- readxl::read_excel(path, .name_repair = "unique")
+  data <- readxl::read_excel(path, col_types = "text", .name_repair = "unique")
   data <- standardize_address(data, path)
   data$survey_residence <- residence
   data
@@ -400,9 +400,11 @@ summary_lines <- c(
   paste0("Households with missing or non-positive weights: ",
          sum(is.na(coverage$analysis_weight) | coverage$analysis_weight <= 0)),
   "",
-  "Provision-method totals and household coverage are in the accompanying CSV files.",
-  "C11New and C01New are compared with their original fields but are not selected automatically.",
+  "C11 has nearly equal unweighted counts across deciles; C11New has nearly equal weighted totals within residence.",
+  "This supports C11New as the weighted income-decile candidate, pending confirmation from official metadata.",
+  "C01New top-codes household size at 10; the original C01 preserves larger values.",
   "Fasl and block remain candidate design fields pending confirmation from survey documentation.",
+  "Provision-method totals and household coverage are in the accompanying CSV files.",
   "This audit is descriptive only; it does not assign zero health spending to unmatched households."
 )
 
