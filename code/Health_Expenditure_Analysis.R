@@ -107,10 +107,15 @@ normalize_household_id <- function(x) {
 
 # Aggregate the monthly health-expenditure records to one row per
 # household. Only provision-method code 1 (purchased) enters the OOP
-# numerator. Codes 2-8 are non-cash acquisition methods. The all-method
-# total is retained separately for audit purposes. Households with no
-# medical-table records receive zero recorded OOP, consistent with the
-# independent HEIS processing pipeline's zero-fill for absent categories.
+# numerator. Codes 2-8 are non-monetary acquisition methods in the
+# independent HEIS processing script (93.R). The all-method total is
+# retained separately for audit purposes. Households with no medical-table
+# records receive zero recorded expenditure in this table.
+#
+# IMPORTANT: this creates nominal annual OOP by multiplying the monthly
+# Table 6 amount by 12. Item-specific, interview-month CPI deflation is not
+# yet implemented because the required CPI and Global-code source files
+# are not present in this repository.
 
 aggregate_health_expenditure <- function(data) {
   data <- data |>
@@ -149,6 +154,7 @@ aggregate_health_expenditure <- function(data) {
       .groups = "drop"
     ) |>
     mutate(
+      # Table 6 is a monthly-recall expenditure table.
       annual_health_expenditure = health_expenditure * 12
     )
 }
@@ -700,6 +706,26 @@ final_health_data <- final_health_data |>
       )
     
   )
+# Validate core measurement inputs before constructing CHE.
+if (any(!is.finite(final_health_data$weight)) ||
+    any(final_health_data$weight <= 0)) {
+  stop("Survey weights must be finite and strictly positive.")
+}
+if (any(!is.finite(final_health_data$total_expenditure)) ||
+    any(final_health_data$total_expenditure <= 0)) {
+  stop("Total household expenditure must be finite and positive.")
+}
+if (any(!is.finite(final_health_data$food_expenditure)) ||
+    any(final_health_data$food_expenditure < 0)) {
+  stop("Food expenditure must be finite and non-negative.")
+}
+if (any(final_health_data$household_size < 1, na.rm = TRUE)) {
+  stop("Household size must be at least one.")
+}
+if (any(final_health_data$annual_health_expenditure < 0, na.rm = TRUE)) {
+  stop("Annualized OOP expenditure cannot be negative.")
+}
+
 ############################################################
 # 23. Descriptive Statistics
 ############################################################
@@ -883,7 +909,7 @@ modelsummary(
   statistic = "std.error",
   
   stars = TRUE,
-  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
+  gof_map = NA,
   notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
   
   title =
@@ -1028,6 +1054,52 @@ final_health_data <- final_health_data |>
     )
   )
 
+
+# Export measurement diagnostics by residence and for the full sample.
+che_diagnostic_data <- bind_rows(
+  final_health_data |>
+    mutate(residence_group = as.character(residence_type)),
+  final_health_data |>
+    mutate(residence_group = "All")
+)
+
+che_construction_diagnostics <- che_diagnostic_data |>
+  group_by(residence_group) |>
+  summarise(
+    households = n(),
+    weighted_population = sum(weight, na.rm = TRUE),
+    nonpositive_capacity_to_pay_n = sum(capacity_to_pay <= 0, na.rm = TRUE),
+    nonfinite_health_ratio_n = sum(!is.finite(health_expenditure_ratio)),
+    missing_CHE_n = sum(is.na(catastrophic_health_expenditure)),
+    poor_before_health_payment_n = sum(poor_household == 1, na.rm = TRUE),
+    unweighted_CHE_prevalence = mean(catastrophic_health_expenditure, na.rm = TRUE),
+    weighted_CHE_prevalence = weighted.mean(
+      catastrophic_health_expenditure, weight, na.rm = TRUE
+    ),
+    weighted_CHE30_prevalence = weighted.mean(cata_30, weight, na.rm = TRUE),
+    weighted_CHE50_prevalence = weighted.mean(cata_50, weight, na.rm = TRUE),
+    weighted_mean_annual_OOP = weighted.mean(
+      annual_health_expenditure, weight, na.rm = TRUE
+    ),
+    weighted_mean_capacity_to_pay = weighted.mean(
+      capacity_to_pay, weight, na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+write.csv(
+  che_construction_diagnostics,
+  "outputs/diagnostics/che_construction_diagnostics.csv",
+  row.names = FALSE
+)
+
+if (any(che_construction_diagnostics$nonpositive_capacity_to_pay_n > 0) ||
+    any(che_construction_diagnostics$nonfinite_health_ratio_n > 0)) {
+  stop(
+    "CHE construction produced non-positive capacity to pay or non-finite ",
+    "health-expenditure ratios. Inspect che_construction_diagnostics.csv."
+  )
+}
 
 ############################################################
 # 31. Final Research Extensions
@@ -1240,6 +1312,21 @@ sessionInfo()
 
 
 
+# Preserve warnings rather than allowing Rscript to report only a count.
+captured_warnings <- warnings()
+warning_messages <- if (is.null(captured_warnings)) {
+  character()
+} else {
+  vapply(captured_warnings, conditionMessage, character(1))
+}
+writeLines(
+  c(
+    paste0("Captured warning count: ", length(warning_messages)),
+    warning_messages
+  ),
+  "outputs/diagnostics/analysis_warnings.txt"
+)
+
 ############################################################
 # OUTPUT VALIDATION
 ############################################################
@@ -1257,6 +1344,8 @@ expected_outputs <- c(
   "outputs/tables/large_household_support.csv",
   "outputs/tables/large_household_model_status.txt",
   "outputs/tables/missing_data_summary.csv",
+  "outputs/diagnostics/che_construction_diagnostics.csv",
+  "outputs/diagnostics/analysis_warnings.txt",
   "outputs/figures/figure1_income_quintile_CHE.png"
 )
 
