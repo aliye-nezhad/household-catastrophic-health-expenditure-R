@@ -90,7 +90,7 @@ jobs:
       - name: Install R dependencies (cached)
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          packages: any::dplyr any::readxl any::writexl any::modelsummary any::labelled any::survey any::ggplot2 any::flextable any::officer
+          packages: any::dplyr any::readxl any::writexl any::modelsummary any::labelled any::survey any::ggplot2 any::flextable any::officer any::pandoc
           dependencies: '"hard"'
           cache: always
 
