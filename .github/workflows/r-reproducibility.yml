@@ -35,6 +35,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             7zip \
+            mdbtools \
             pandoc \
             libuv1-dev \
             libfontconfig1-dev \
@@ -82,6 +83,9 @@ jobs:
           echo "=== Inventory of the additional 1393 archive ==="
           "$SEVEN_ZIP" l data/raw/93.rar > outputs/diagnostics/93_archive_inventory.txt
           cat outputs/diagnostics/93_archive_inventory.txt
+
+      - name: Inventory original Access database schema (no record export)
+        run: bash code/audit_access_database.sh
 
       - name: Install R dependencies
         shell: Rscript {0}
