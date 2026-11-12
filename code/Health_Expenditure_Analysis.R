@@ -572,7 +572,7 @@ final_health_data <- final_health_data |>
 # 17. Create Food Share Percentiles
 ############################################################
 
-# Rank households according to food expenditure share.
+# Rank households according to total household consumption expenditure.
 
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
@@ -586,16 +586,17 @@ final_health_data <- final_health_data |>
 # 18. Estimate Subsistence Expenditure
 ############################################################
 
-# Estimate the subsistence expenditure level using households
-# around the median food-share group.
+# Estimate subsistence expenditure using the weighted mean of equivalent
+# food expenditure among households in the 45th-55th percentiles of total
+# household consumption expenditure, separately by residence.
 
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
   mutate(
     subsistence_expenditure = weighted.mean(
       equivalent_food_expenditure[
-        food_share_percentile >= 0.45 &
-          food_share_percentile <= 0.55
+        total_expenditure_percentile >= 0.45 &
+          total_expenditure_percentile <= 0.55
       ],
       weight[
         food_share_percentile >= 0.45 &
