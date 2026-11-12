@@ -17,7 +17,7 @@ The workflow combines household demographic and expenditure information with hea
 | Variable | Description | Role |
 | --- | --- | --- |
 | `catastrophic_health_expenditure` | CHE indicator based on the baseline threshold | Dependent variable |
-| `annual_health_expenditure` | Annualized household out-of-pocket health expenditure | CHE numerator |
+| `annual_health_expenditure` | Current script's annualized aggregate from Table 6 | Provisional CHE numerator; OOP classification and CPI treatment not yet verified |
 | `capacity_to_pay` | Household expenditure remaining after subsistence needs | CHE denominator |
 | `income_rank` | Household economic-position indicator | Main socioeconomic variable |
 | `residence_type` | Urban/rural classification | Household characteristic |
@@ -49,7 +49,7 @@ CHE = 0 otherwise
 
 The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds.
 
-The implementation uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are methodological choices in the current script and should be checked against the intended source specification before substantive interpretation.
+The implementation currently uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are provisional implementation choices, not yet confirmed as the exact benchmark specification. The current numerator is not yet CPI-adjusted, and its OOP definition has not been established.
 
 ## Empirical workflow
 
@@ -159,7 +159,7 @@ The workflow checks out the repository, sets up R, extracts the household Excel 
 
 The workflow also performs a schema-only inventory of the original Access database stored in `data/raw/93.rar`. It extracts the database into the runner's temporary directory, records table names, column definitions, and declared relationships with `mdbtools`, and removes the temporary extraction when the job ends. It does not export household-level records. The inventory is uploaded with the other diagnostic outputs for inspection.
 
-The workflow is an execution check; a successful run does not by itself validate the underlying data definitions or research methodology.
+The workflow is an execution check; a successful run does not by itself validate the underlying data definitions or research methodology. At the current audit stage, the household sample constructed after excluding missing food expenditure contains 38,189 observations (19,334 rural and 18,855 urban), two fewer urban observations than the published benchmark of 38,191 (19,334 rural and 18,857 urban). The script reports this discrepancy in `outputs/diagnostics/sample_benchmark_comparison.csv` and does not force the sample to match.
 
 ## Interpretation and limitations
 
@@ -168,7 +168,9 @@ The workflow is an execution check; a successful run does not by itself validate
 - Household survey estimates depend on the quality of the underlying survey variables, weights, and identifiers.
 - The current survey-design declaration uses `ids = ~1` and household weights. It does not explicitly model strata or clusters.
 - The current workflow does not yet pin package versions through a lockfile.
-- The source variable definitions, expenditure annualization, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
+- The source variable definitions, expenditure annualization, OOP classification, item-specific CPI adjustment, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
+- The published 2014 analytical sample differs from the current constructed sample by two urban observations; this discrepancy is documented and unresolved.
+- The current code should be treated as an evolving replication audit, not a validated reproduction of the published estimates.
 
 ## Skills demonstrated
 
