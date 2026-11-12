@@ -1115,27 +1115,32 @@ if (any(che_construction_diagnostics$nonpositive_capacity_to_pay_n > 0) ||
 # Neither variable is labelled as income- or expenditure-based until the
 # official 1393 variable metadata are verified.
 # Map adjacent deciles into quintiles explicitly.
-economic_decile <- suppressWarnings(as.integer(as.character(final_health_data$economic_rank)))
+
+economic_decile <- suppressWarnings(
+  as.integer(as.character(final_health_data$economic_rank))
+)
 economic_decile_alternative <- suppressWarnings(
   as.integer(as.character(final_health_data$economic_rank_alternative))
 )
-if (any(!is.na(income_decile) & !(income_decile %in% 0:9))) {
+
+if (any(!is.na(economic_decile) & !(economic_decile %in% 0:9))) {
   stop("C11 contains values outside the expected 0-9 decile coding.")
 }
-if (any(!is.na(income_decile_unweighted) & !(income_decile_unweighted %in% 0:9))) {
+if (any(!is.na(economic_decile_alternative) &
+        !(economic_decile_alternative %in% 0:9))) {
   stop("C11New contains values outside the expected 0-9 decile coding.")
 }
 
 final_health_data <- final_health_data |>
   mutate(
-    income_decile = income_decile,
-    income_decile_unweighted = income_decile_unweighted,
+    economic_decile = economic_decile,
+    economic_decile_alternative = economic_decile_alternative,
     economic_quintile = case_when(
-      income_decile %in% c(0L, 1L) ~ 1L,
-      income_decile %in% c(2L, 3L) ~ 2L,
-      income_decile %in% c(4L, 5L) ~ 3L,
-      income_decile %in% c(6L, 7L) ~ 4L,
-      income_decile %in% c(8L, 9L) ~ 5L,
+      economic_decile %in% c(0L, 1L) ~ 1L,
+      economic_decile %in% c(2L, 3L) ~ 2L,
+      economic_decile %in% c(4L, 5L) ~ 3L,
+      economic_decile %in% c(6L, 7L) ~ 4L,
+      economic_decile %in% c(8L, 9L) ~ 5L,
       TRUE ~ NA_integer_
     )
   )
@@ -1147,9 +1152,9 @@ survey_design <- svydesign(
 )
 
 
-income_quintile_summary <- svyby(
+economic_quintile_summary <- svyby(
   ~catastrophic_health_expenditure,
-  ~income_quintile,
+  ~economic_quintile,
   survey_design,
   svymean,
   na.rm = TRUE
@@ -1157,16 +1162,16 @@ income_quintile_summary <- svyby(
 
 
 write.csv(
-  income_quintile_summary,
+  economic_quintile_summary,
   "outputs/tables/Table_CHE_by_economic_quintile.csv",
   row.names = FALSE
 )
 
 
 income_plot <- ggplot(
-  income_quintile_summary,
+  economic_quintile_summary,
   aes(
-    x = income_quintile,
+    x = economic_quintile,
     y = catastrophic_health_expenditure
   )
 ) +
@@ -1174,7 +1179,7 @@ income_plot <- ggplot(
   geom_point() +
   labs(
     title = "Catastrophic Health Expenditure by Economic Quintile",
-    x = "Income Quintile",
+    x = "Economic Quintile",
     y = "Weighted Prevalence"
   )
 
@@ -1355,13 +1360,13 @@ expected_outputs <- c(
   "outputs/tables/model_comparison.docx",
   "outputs/tables/CHE_final_regression_table.docx",
   "outputs/tables/CHE_threshold_robustness.docx",
-  "outputs/tables/Table_CHE_by_income_quintile.csv",
+  "outputs/tables/Table_CHE_by_economic_quintile.csv",
   "outputs/tables/large_household_support.csv",
   "outputs/tables/large_household_model_status.txt",
   "outputs/tables/missing_data_summary.csv",
   "outputs/diagnostics/che_construction_diagnostics.csv",
   "outputs/diagnostics/analysis_warnings.txt",
-  "outputs/figures/figure1_income_quintile_CHE.png"
+  "outputs/figures/figure1_economic_quintile_CHE.png"
 )
 
 missing_outputs <- expected_outputs[
