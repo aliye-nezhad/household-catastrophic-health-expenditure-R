@@ -87,51 +87,17 @@ jobs:
       - name: Inventory original Access database schema (no record export)
         run: bash code/audit_access_database.sh
 
-      - name: Install R dependencies
-        shell: Rscript {0}
+      - name: Install R dependencies (cached)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: any::dplyr any::readxl any::writexl any::modelsummary any::labelled any::survey any::ggplot2 any::flextable any::officer
+          dependencies: '"all"'
+          cache: always
+
+      - name: Verify Pandoc
         run: |
-          packages <- c(
-            "dplyr",
-            "readxl",
-            "writexl",
-            "modelsummary",
-            "labelled",
-            "survey",
-            "ggplot2",
-            "flextable",
-            "officer",
-            "pandoc"
-          )
-
-          missing <- packages[
-            !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
-          ]
-
-          if (length(missing) > 0) {
-            message("Installing missing R packages: ", paste(missing, collapse = ", "))
-            # setup-r configures the public Posit Package Manager repository.
-            # Keeping its repository setting allows Linux binary packages to
-            # be used where available, while the system libraries above
-            # support source builds when needed.
-            install.packages(missing)
-          }
-
-          unavailable <- packages[
-            !vapply(packages, requireNamespace, logical(1), quietly = TRUE)
-          ]
-
-          if (length(unavailable) > 0) {
-            stop(
-              "Required R packages remain unavailable: ",
-              paste(unavailable, collapse = ", ")
-            )
-          }
-
-          if (!nzchar(Sys.which("pandoc"))) {
-            stop("The system Pandoc executable is not available on PATH.")
-          }
-
-          system2("pandoc", "--version")
+          command -v pandoc
+          pandoc --version
 
       - name: Audit source-data coverage and survey identifiers
         run: Rscript code/audit_source_data.R
