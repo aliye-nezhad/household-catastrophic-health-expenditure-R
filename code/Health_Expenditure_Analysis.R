@@ -438,7 +438,7 @@ sample_benchmark_comparison <- tibble(
     benchmark_2024_status
   ),
   comparison_note = c(
-    "The 2018 article reports two more urban households than the current source files.",
+    "Primary source-file counts match the article (18,885 urban; 19,390 rural), but the current food-expenditure field is missing for 30 urban households versus 28 reported exclusions, leaving two additional urban exclusions.",
     "The 2024 article reports 38,189 households and a rounded urban share of 49.37%; exact residence-specific counts are not reported in its sample-size table."
   )
 )
@@ -582,8 +582,9 @@ final_health_data <- final_health_data |>
 # The poverty line is the weighted mean of equivalent food expenditure
 # within this reference group.
 #
-# Total-consumption-expenditure ranking is retained as an alternative
-# candidate specification, pending full reconciliation to its source paper.
+# The alternative specification follows Ghiasvand et al. (2015):
+# rank households by total consumption and use the 45th-55th percentile
+# group to estimate the weighted mean equivalent-food poverty line.
 
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
@@ -1087,12 +1088,30 @@ che_construction_diagnostics <- che_diagnostic_data |>
     ),
     weighted_CHE30_prevalence = weighted.mean(cata_30, weight, na.rm = TRUE),
     weighted_CHE50_prevalence = weighted.mean(cata_50, weight, na.rm = TRUE),
+    weighted_mean_total_expenditure_annual = weighted.mean(
+      total_expenditure, weight, na.rm = TRUE
+    ),
+    weighted_mean_food_expenditure_annual = weighted.mean(
+      food_expenditure, weight, na.rm = TRUE
+    ),
     weighted_mean_annual_OOP = weighted.mean(
       annual_health_expenditure, weight, na.rm = TRUE
     ),
-    weighted_mean_capacity_to_pay = weighted.mean(
+    weighted_mean_capacity_to_pay_annual = weighted.mean(
       capacity_to_pay, weight, na.rm = TRUE
     ),
+    weighted_mean_monthly_total_expenditure = weighted.mean(
+      total_expenditure, weight, na.rm = TRUE
+    ) / 12,
+    weighted_mean_monthly_food_expenditure = weighted.mean(
+      food_expenditure, weight, na.rm = TRUE
+    ) / 12,
+    weighted_mean_monthly_OOP = weighted.mean(
+      health_expenditure, weight, na.rm = TRUE
+    ),
+    weighted_mean_monthly_capacity_to_pay = weighted.mean(
+      capacity_to_pay, weight, na.rm = TRUE
+    ) / 12,
     .groups = "drop"
   )
 
@@ -1150,28 +1169,28 @@ summarise_che_specification <- function(
 che_specification_sensitivity <- bind_rows(
   summarise_che_specification(
     final_health_data,
-    "Food-share percentile reference group (Yazdi-Feyzabadi et al., 2018)",
+    "Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)",
     "capacity_to_pay",
     "Purchased records only (candidate OOP measure)",
     "annual_health_expenditure"
   ),
   summarise_che_specification(
     final_health_data,
-    "Total-consumption percentile reference group (Ghiasvand et al., 2015)",
+    "Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)",
     "capacity_to_pay_total_rank",
     "Purchased records only (candidate OOP measure)",
     "annual_health_expenditure"
   ),
   summarise_che_specification(
     final_health_data,
-    "Food-share percentile reference group (Yazdi-Feyzabadi et al., 2018)",
+    "Food-share interval 45%-55% (Yazdi-Feyzabadi et al., 2018)",
     "capacity_to_pay",
     "All recorded Table 6 acquisition methods (diagnostic only)",
     "annual_health_expenditure_all_methods"
   ),
   summarise_che_specification(
     final_health_data,
-    "Total-consumption percentile reference group (Ghiasvand et al., 2015)",
+    "Total-consumption percentile 45th-55th (Ghiasvand et al., 2015)",
     "capacity_to_pay_total_rank",
     "All recorded Table 6 acquisition methods (diagnostic only)",
     "annual_health_expenditure_all_methods"
@@ -1194,20 +1213,51 @@ write.csv(
 # scope, and sampling-design implementation still require reconciliation.
 published_che_benchmark <- tibble(
   residence_group = c("All", "Rural", "Urban"),
-  published_2014_weighted_CHE_prevalence_percent = c(3.15, 4.38, 2.69)
+  published_2014_weighted_CHE_prevalence_percent = c(3.15, 4.38, 2.69),
+  published_monthly_total_expenditure_thousand_rials = c(17857, 11749, 20032),
+  published_monthly_food_expenditure_thousand_rials = c(4670, 4673, 4669),
+  published_monthly_capacity_to_pay_thousand_rials = c(14105, 8019, 16303),
+  published_monthly_OOP_thousand_rials = c(1194, 781, 1341)
 )
 
 che_benchmark_comparison <- che_construction_diagnostics |>
-  select(residence_group, weighted_CHE_prevalence) |>
+  select(
+    residence_group,
+    weighted_CHE_prevalence,
+    weighted_mean_monthly_total_expenditure,
+    weighted_mean_monthly_food_expenditure,
+    weighted_mean_monthly_capacity_to_pay,
+    weighted_mean_monthly_OOP
+  ) |>
   mutate(
     observed_weighted_CHE_prevalence_percent =
-      100 * weighted_CHE_prevalence
+      100 * weighted_CHE_prevalence,
+    observed_monthly_total_expenditure_thousand_rials =
+      weighted_mean_monthly_total_expenditure / 1000,
+    observed_monthly_food_expenditure_thousand_rials =
+      weighted_mean_monthly_food_expenditure / 1000,
+    observed_monthly_capacity_to_pay_thousand_rials =
+      weighted_mean_monthly_capacity_to_pay / 1000,
+    observed_monthly_OOP_thousand_rials =
+      weighted_mean_monthly_OOP / 1000
   ) |>
   left_join(published_che_benchmark, by = "residence_group") |>
   mutate(
     difference_percentage_points =
       observed_weighted_CHE_prevalence_percent -
-      published_2014_weighted_CHE_prevalence_percent
+      published_2014_weighted_CHE_prevalence_percent,
+    difference_monthly_total_expenditure_thousand_rials =
+      observed_monthly_total_expenditure_thousand_rials -
+      published_monthly_total_expenditure_thousand_rials,
+    difference_monthly_food_expenditure_thousand_rials =
+      observed_monthly_food_expenditure_thousand_rials -
+      published_monthly_food_expenditure_thousand_rials,
+    difference_monthly_capacity_to_pay_thousand_rials =
+      observed_monthly_capacity_to_pay_thousand_rials -
+      published_monthly_capacity_to_pay_thousand_rials,
+    difference_monthly_OOP_thousand_rials =
+      observed_monthly_OOP_thousand_rials -
+      published_monthly_OOP_thousand_rials
   )
 
 write.csv(
