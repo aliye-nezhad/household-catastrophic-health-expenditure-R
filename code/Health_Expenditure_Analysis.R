@@ -501,9 +501,8 @@ final_health_data <- health_data |>
 # Capacity to pay is defined as household expenditure remaining
 # after subsistence expenditure.
 #
-# Subsistence expenditure is estimated using households whose
-# food expenditure share falls between the 45th and 55th
-# percentiles of the food-share distribution.
+# Subsistence expenditure is estimated using households in the 45th-55th
+# percentiles of total household consumption expenditure.
 #
 # Household-size adjustment follows the equivalence scale:
 #
@@ -569,15 +568,15 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 17. Create Food Share Percentiles
+# 17. Create Total-Expenditure Percentiles
 ############################################################
 
-# Rank households according to total household consumption expenditure.
+# Rank households from lowest to highest total consumption expenditure.
 
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
   mutate(
-    food_share_percentile = percent_rank(food_expenditure_share)
+    total_expenditure_percentile = percent_rank(total_expenditure)
   ) |>
   ungroup()
 
@@ -599,8 +598,8 @@ final_health_data <- final_health_data |>
           total_expenditure_percentile <= 0.55
       ],
       weight[
-        food_share_percentile >= 0.45 &
-          food_share_percentile <= 0.55
+        total_expenditure_percentile >= 0.45 &
+          total_expenditure_percentile <= 0.55
       ],
       na.rm = TRUE
     )
