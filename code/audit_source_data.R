@@ -128,15 +128,17 @@ household_only_address_count <- household_keys |>
   nrow()
 
 # The 1393 metadata define these provision codes for the medical table.
+# Labels cross-checked against the independent 1393 HEIS processing
+# script (93.R), which recodes DYCOL02 as the acquisition method.
 method_labels <- c(
-  "1" = "Purchase",
-  "2" = "Home production",
-  "3" = "Instead of public service",
-  "4" = "Instead of cooperative service",
-  "5" = "Instead of private service",
-  "6" = "Agricultural work",
-  "7" = "Non-agricultural work",
-  "8" = "Donation"
+  "1" = "Purchased",
+  "2" = "Homemade",
+  "3" = "Public service",
+  "4" = "Cooperative service",
+  "5" = "Private service",
+  "6" = "Agriculture",
+  "7" = "Non-agriculture",
+  "8" = "Free"
 )
 
 medical$provision_method_label <- unname(method_labels[as.character(medical$DYCOL02)])
