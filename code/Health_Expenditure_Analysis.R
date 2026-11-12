@@ -568,14 +568,22 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 17. Create Total-Expenditure Percentiles
+# 17. Identify the Food-Share Reference Group
 ############################################################
 
-# Rank households from lowest to highest total consumption expenditure.
+# The primary specification follows Yazdi-Feyzabadi et al. (2018):
+# households are ranked by food expenditure as a share of total expenditure,
+# separately by year and residence. The 45th-55th percentile group is used
+# to estimate subsistence expenditure. Percentile ranks are unweighted;
+# the mean equivalent food expenditure within the reference group is weighted.
+#
+# Total-consumption-expenditure ranking is retained as an alternative
+# specification following Ghiasvand et al. (2015).
 
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
   mutate(
+    food_share_percentile = percent_rank(food_expenditure_share),
     total_expenditure_percentile = percent_rank(total_expenditure)
   ) |>
   ungroup()
@@ -585,14 +593,21 @@ final_health_data <- final_health_data |>
 # 18. Estimate Subsistence Expenditure
 ############################################################
 
-# Estimate subsistence expenditure using the weighted mean of equivalent
-# food expenditure among households in the 45th-55th percentiles of total
-# household consumption expenditure, separately by residence.
-
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
   mutate(
     subsistence_expenditure = weighted.mean(
+      equivalent_food_expenditure[
+        food_share_percentile >= 0.45 &
+          food_share_percentile <= 0.55
+      ],
+      weight[
+        food_share_percentile >= 0.45 &
+          food_share_percentile <= 0.55
+      ],
+      na.rm = TRUE
+    ),
+    subsistence_expenditure_total_rank = weighted.mean(
       equivalent_food_expenditure[
         total_expenditure_percentile >= 0.45 &
           total_expenditure_percentile <= 0.55
@@ -614,13 +629,11 @@ final_health_data <- final_health_data |>
 # Adjust subsistence expenditure according to household size.
 
 final_health_data <- final_health_data |>
-  
   mutate(
-    
     adjusted_subsistence_expenditure =
-      subsistence_expenditure *
-      equivalence_size
-    
+      subsistence_expenditure * equivalence_size,
+    adjusted_subsistence_expenditure_total_rank =
+      subsistence_expenditure_total_rank * equivalence_size
   )
 
 
@@ -632,24 +645,17 @@ final_health_data <- final_health_data |>
 # subsistence needs.
 
 final_health_data <- final_health_data |>
-  
   mutate(
-    
-    capacity_to_pay =
-      
-      if_else(
-        
-        adjusted_subsistence_expenditure >
-          food_expenditure,
-        
-        total_expenditure -
-          food_expenditure,
-        
-        total_expenditure -
-          adjusted_subsistence_expenditure
-        
-      )
-    
+    # CTP equals total expenditure less the greater of actual food
+    # expenditure and estimated subsistence expenditure.
+    capacity_to_pay = total_expenditure - pmax(
+      food_expenditure,
+      adjusted_subsistence_expenditure
+    ),
+    capacity_to_pay_total_rank = total_expenditure - pmax(
+      food_expenditure,
+      adjusted_subsistence_expenditure_total_rank
+    )
   )
 
 
@@ -697,16 +703,11 @@ final_health_data <- final_health_data |>
     
     
     catastrophic_health_expenditure =
-      
-      if_else(
-        
-        health_expenditure_ratio >= 0.40,
-        
-        1,
-        0
-        
-      )
-    
+      as.integer(health_expenditure_ratio >= 0.40),
+    health_expenditure_ratio_total_rank =
+      annual_health_expenditure / capacity_to_pay_total_rank,
+    catastrophic_health_expenditure_total_rank =
+      as.integer(health_expenditure_ratio_total_rank >= 0.40)
   )
 # Validate core measurement inputs before constructing CHE.
 if (any(!is.finite(final_health_data$weight)) ||
@@ -1019,7 +1020,7 @@ modelsummary(
   statistic = "std.error",
   
   stars = TRUE,
-  gof_omit = "AIC|BIC|Log.Lik|RMSE|R2",
+  gof_map = NA,
   notes = "Odds ratios are reported; delta-method standard errors are in parentheses. Survey-weighted logistic models.",
   
   title =
@@ -1094,6 +1095,100 @@ write.csv(
   "outputs/diagnostics/che_construction_diagnostics.csv",
   row.names = FALSE
 )
+
+# Compare the two published subsistence-reference-group approaches and
+# two medical-numerator definitions. "All Table 6 values" is diagnostic only:
+# it includes non-purchased acquisition methods and must not be interpreted
+# as an OOP measure without further validation of the questionnaire coding.
+summarise_che_specification <- function(
+  data,
+  reference_method,
+  capacity_variable,
+  numerator_method,
+  numerator_variable
+) {
+  specification_data <- data |>
+    mutate(
+      residence_group = as.character(residence_type),
+      reference_method = reference_method,
+      numerator_method = numerator_method,
+      specification_capacity_to_pay = .data[[capacity_variable]],
+      specification_annual_health = .data[[numerator_variable]],
+      specification_CHE = as.integer(
+        specification_annual_health / specification_capacity_to_pay >= 0.40
+      )
+    )
+
+  specification_data <- bind_rows(
+    specification_data,
+    specification_data |> mutate(residence_group = "All")
+  )
+
+  specification_data |>
+    group_by(reference_method, numerator_method, residence_group) |>
+    summarise(
+      households = n(),
+      weighted_CHE_prevalence = weighted.mean(
+        specification_CHE, weight, na.rm = TRUE
+      ),
+      weighted_mean_capacity_to_pay = weighted.mean(
+        specification_capacity_to_pay, weight, na.rm = TRUE
+      ),
+      weighted_mean_annual_health_expenditure = weighted.mean(
+        specification_annual_health, weight, na.rm = TRUE
+      ),
+      .groups = "drop"
+    )
+}
+
+che_specification_sensitivity <- bind_rows(
+  summarise_che_specification(
+    final_health_data,
+    "Food-share percentile reference group (Yazdi-Feyzabadi et al., 2018)",
+    "capacity_to_pay",
+    "Purchased records only (candidate OOP measure)",
+    "annual_health_expenditure"
+  ),
+  summarise_che_specification(
+    final_health_data,
+    "Total-consumption percentile reference group (Ghiasvand et al., 2015)",
+    "capacity_to_pay_total_rank",
+    "Purchased records only (candidate OOP measure)",
+    "annual_health_expenditure"
+  ),
+  summarise_che_specification(
+    final_health_data,
+    "Food-share percentile reference group (Yazdi-Feyzabadi et al., 2018)",
+    "capacity_to_pay",
+    "All recorded Table 6 acquisition methods (diagnostic only)",
+    "health_expenditure_all_methods"
+  ) |>
+    mutate(
+      weighted_mean_annual_health_expenditure =
+        weighted_mean_annual_health_expenditure * 12
+    ),
+  summarise_che_specification(
+    final_health_data,
+    "Total-consumption percentile reference group (Ghiasvand et al., 2015)",
+    "capacity_to_pay_total_rank",
+    "All recorded Table 6 acquisition methods (diagnostic only)",
+    "health_expenditure_all_methods"
+  ) |>
+    mutate(
+      weighted_mean_annual_health_expenditure =
+        weighted_mean_annual_health_expenditure * 12
+    )
+) |>
+  mutate(
+    weighted_CHE_prevalence_percent = 100 * weighted_CHE_prevalence
+  )
+
+write.csv(
+  che_specification_sensitivity,
+  "outputs/diagnostics/che_specification_sensitivity.csv",
+  row.names = FALSE
+)
+
 
 # Compare the current weighted CHE prevalence with the published 2014
 # benchmark reported by Yazdi-Feyzabadi et al. (2018). This is a diagnostic,
@@ -1284,7 +1379,7 @@ modelsummary(
   list(
     "Baseline" = model_main,
     "Province FE" = model_province,
-    "Income x Rural" = model_interaction
+    "Economic rank x Rural" = model_interaction
   ),
   exponentiate = TRUE,
   statistic = "std.error",
@@ -1393,6 +1488,7 @@ expected_outputs <- c(
   "outputs/tables/large_household_model_status.txt",
   "outputs/tables/missing_data_summary.csv",
   "outputs/diagnostics/che_construction_diagnostics.csv",
+  "outputs/diagnostics/che_specification_sensitivity.csv",
   "outputs/diagnostics/che_benchmark_comparison.csv",
   "outputs/diagnostics/analysis_warnings.txt",
   "outputs/figures/figure1_economic_quintile_CHE.png"
