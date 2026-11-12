@@ -80,58 +80,37 @@ U93P3S06 <- readRDS("data/raw/U93P3S06.rds")
 # 4. Construct Household Health Expenditure Variable
 ############################################################
 
-# Aggregate health expenditure components at household level
+# Aggregate the monthly health-expenditure records to one row per
+# household. The original HEIS processing script retains households
+# with no records in a given expenditure category and fills the
+# aggregated category with zero; we follow that convention below.
 
-R93P3S06 <- R93P3S06 |>
-  
-  group_by(Address) |>
-  
-  mutate(
-    health_expenditure = sum(
-      DYCOL03,
-      na.rm = TRUE
+aggregate_health_expenditure <- function(data) {
+  data |>
+    mutate(
+      health_expenditure_component =
+        suppressWarnings(as.numeric(as.character(DYCOL03)))
+    ) |>
+    group_by(Address) |>
+    summarise(
+      health_expenditure = sum(
+        health_expenditure_component,
+        na.rm = TRUE
+      ),
+      medical_record_count = n(),
+      .groups = "drop"
+    ) |>
+    mutate(
+      annual_health_expenditure = health_expenditure * 12
     )
-  ) |>
-  
-  arrange(
-    Address,
-    health_expenditure
-  ) |>
-  
-  filter(
-    row_number() == n()
-  ) |>
-  
-  mutate(
-    annual_health_expenditure =
-      health_expenditure * 12
-  )
+}
 
+R93_health <- aggregate_health_expenditure(R93P3S06)
+U93_health <- aggregate_health_expenditure(U93P3S06)
 
-U93P3S06 <- U93P3S06 |>
-  
-  group_by(Address) |>
-  
-  mutate(
-    health_expenditure = sum(
-      DYCOL03,
-      na.rm = TRUE
-    )
-  ) |>
-  
-  arrange(
-    Address,
-    health_expenditure
-  ) |>
-  
-  filter(
-    row_number() == n()
-  ) |>
-  
-  mutate(
-    annual_health_expenditure =
-      health_expenditure * 12
-  )
+if (anyDuplicated(R93_health$Address) || anyDuplicated(U93_health$Address)) {
+  stop("Health expenditure aggregation did not produce unique household identifiers.")
+}
 ############################################################
 # 5. Import External Household Files
 ############################################################
@@ -162,26 +141,32 @@ U93 <- U93 |>
 
 # Merge household characteristics with health expenditure data
 
-merge_rural <- merge(
-  R93,
-  R93P3S06,
-  by = "Address"
-)
+# Preserve the complete household sample. A household with no row in
+# the medical-expenditure table has no recorded health expenditure in
+# that table; the independent HEIS processing script likewise fills
+# absent expenditure categories with zero after a household-level join.
+merge_rural <- R93 |>
+  left_join(R93_health, by = "Address")
 
+merge_urban <- U93 |>
+  left_join(U93_health, by = "Address")
 
-merge_urban <- merge(
-  U93,
-  U93P3S06,
-  by = "Address"
-)
-
-
-# Combine urban and rural households
-
-health_data <- rbind(
+health_data <- bind_rows(
   merge_rural,
   merge_urban
-)
+) |>
+  mutate(
+    health_expenditure = coalesce(health_expenditure, 0),
+    medical_record_count = coalesce(medical_record_count, 0L),
+    annual_health_expenditure = coalesce(annual_health_expenditure, 0)
+  )
+
+if (nrow(health_data) != nrow(R93) + nrow(U93)) {
+  stop("Household merge changed the source household count.")
+}
+if (anyDuplicated(health_data$Address)) {
+  stop("Household merge produced duplicate household identifiers.")
+}
 
 
 ############################################################
@@ -293,17 +278,46 @@ health_data$year <- 2014
 # Convert numerical variables
 
 health_data <- health_data |>
-  
-  mutate_at(
-    c(
-      "food_expenditure",
-      "total_expenditure",
-      "household_size",
-      "age",
-      "weight"
-    ),
-    as.numeric
+  mutate(
+    across(
+      c(
+        food_expenditure,
+        total_expenditure,
+        household_size,
+        age,
+        weight,
+        annual_health_expenditure,
+        health_expenditure
+      ),
+      ~ suppressWarnings(as.numeric(as.character(.x)))
+    )
   )
+
+# The benchmark excludes households with unreported food expenditure.
+# The 2014 published sample is 19,334 rural + 18,857 urban households.
+source_sample <- health_data |>
+  count(residence_type, name = "source_n")
+
+health_data <- health_data |>
+  filter(!is.na(food_expenditure))
+
+analysis_sample <- health_data |>
+  count(residence_type, name = "analysis_n")
+
+expected_sample <- c(Urban = 18857L, Rural = 19334L)
+observed_sample <- setNames(
+  analysis_sample$analysis_n,
+  as.character(analysis_sample$residence_type)
+)
+
+if (!all(names(expected_sample) %in% names(observed_sample)) ||
+    any(observed_sample[names(expected_sample)] != expected_sample)) {
+  stop(
+    "2014 analytical sample does not match the published benchmark. ",
+    "Observed: ",
+    paste(names(observed_sample), observed_sample, collapse = "; ")
+  )
+}
 
 
 ############################################################
@@ -325,7 +339,6 @@ health_data <- health_data |>
 ############################################################
 
 final_health_data <- health_data |>
-  
   select(
     Address,
     year,
@@ -341,8 +354,8 @@ final_health_data <- health_data |>
     food_share,
     income_rank,
     weight,
-    DYCOL01,
-    DYCOL02,
+    health_expenditure,
+    medical_record_count,
     annual_health_expenditure
   )
 ############################################################
@@ -429,13 +442,11 @@ final_health_data <- final_health_data |>
 # Rank households according to food expenditure share.
 
 final_health_data <- final_health_data |>
-  
+  group_by(year, residence_type) |>
   mutate(
-    
-    food_share_percentile =
-      percent_rank(food_expenditure_share)
-    
-  )
+    food_share_percentile = percent_rank(food_expenditure_share)
+  ) |>
+  ungroup()
 
 
 ############################################################
@@ -446,31 +457,20 @@ final_health_data <- final_health_data |>
 # around the median food-share group.
 
 final_health_data <- final_health_data |>
-  
-  group_by(year) |>
-  
+  group_by(year, residence_type) |>
   mutate(
-    
-    subsistence_expenditure =
-      
-      weighted.mean(
-        
-        equivalent_food_expenditure[
-          food_share_percentile >= 0.45 &
-            food_share_percentile <= 0.55
-        ],
-        
-        weight[
-          food_share_percentile >= 0.45 &
-            food_share_percentile <= 0.55
-        ],
-        
-        na.rm = TRUE
-        
-      )
-    
+    subsistence_expenditure = weighted.mean(
+      equivalent_food_expenditure[
+        food_share_percentile >= 0.45 &
+          food_share_percentile <= 0.55
+      ],
+      weight[
+        food_share_percentile >= 0.45 &
+          food_share_percentile <= 0.55
+      ],
+      na.rm = TRUE
+    )
   ) |>
-  
   ungroup()
 
 
@@ -910,9 +910,25 @@ final_health_data <- final_health_data |>
 
 # Income quintile analysis
 
+# C11 is stored as a 0-9 income-decile code in the 2014 files.
+# Map adjacent deciles into quintiles explicitly. ntile() would split
+# tied decile categories across quintiles and create artificial breaks.
+income_decile <- suppressWarnings(as.integer(as.character(final_health_data$income_rank)))
+if (any(!is.na(income_decile) & !(income_decile %in% 0:9))) {
+  stop("C11 contains values outside the expected 0-9 income-decile coding.")
+}
+
 final_health_data <- final_health_data |>
   mutate(
-    income_quintile = ntile(income_rank, 5)
+    income_decile = income_decile,
+    income_quintile = case_when(
+      income_decile %in% c(0L, 1L) ~ 1L,
+      income_decile %in% c(2L, 3L) ~ 2L,
+      income_decile %in% c(4L, 5L) ~ 3L,
+      income_decile %in% c(6L, 7L) ~ 4L,
+      income_decile %in% c(8L, 9L) ~ 5L,
+      TRUE ~ NA_integer_
+    )
   )
 
 survey_design <- svydesign(
