@@ -1112,6 +1112,20 @@ che_construction_diagnostics <- che_diagnostic_data |>
     weighted_mean_monthly_capacity_to_pay = weighted.mean(
       capacity_to_pay, weight, na.rm = TRUE
     ) / 12,
+    weighted_mean_monthly_poverty_line = weighted.mean(
+      subsistence_expenditure, weight, na.rm = TRUE
+    ) / 12,
+    weighted_mean_monthly_adjusted_subsistence = weighted.mean(
+      adjusted_subsistence_expenditure, weight, na.rm = TRUE
+    ) / 12,
+    weighted_mean_monthly_CTP_deduction = weighted.mean(
+      pmin(food_expenditure, adjusted_subsistence_expenditure),
+      weight, na.rm = TRUE
+    ) / 12,
+    weighted_share_food_below_subsistence = weighted.mean(
+      food_expenditure < adjusted_subsistence_expenditure,
+      weight, na.rm = TRUE
+    ),
     .groups = "drop"
   )
 
@@ -1216,6 +1230,7 @@ published_che_benchmark <- tibble(
   published_2014_weighted_CHE_prevalence_percent = c(3.15, 4.38, 2.69),
   published_monthly_total_expenditure_thousand_rials = c(17857, 11749, 20032),
   published_monthly_food_expenditure_thousand_rials = c(4670, 4673, 4669),
+  published_monthly_poverty_line_thousand_rials = c(2393, 2223, 2354),
   published_monthly_capacity_to_pay_thousand_rials = c(14105, 8019, 16303),
   published_monthly_OOP_thousand_rials = c(1194, 781, 1341)
 )
@@ -1227,6 +1242,10 @@ che_benchmark_comparison <- che_construction_diagnostics |>
     weighted_mean_monthly_total_expenditure,
     weighted_mean_monthly_food_expenditure,
     weighted_mean_monthly_capacity_to_pay,
+    weighted_mean_monthly_poverty_line,
+    weighted_mean_monthly_adjusted_subsistence,
+    weighted_mean_monthly_CTP_deduction,
+    weighted_share_food_below_subsistence,
     weighted_mean_monthly_OOP
   ) |>
   mutate(
@@ -1236,8 +1255,16 @@ che_benchmark_comparison <- che_construction_diagnostics |>
       weighted_mean_monthly_total_expenditure / 1000,
     observed_monthly_food_expenditure_thousand_rials =
       weighted_mean_monthly_food_expenditure / 1000,
+    observed_monthly_poverty_line_thousand_rials =
+      weighted_mean_monthly_poverty_line / 1000,
     observed_monthly_capacity_to_pay_thousand_rials =
       weighted_mean_monthly_capacity_to_pay / 1000,
+    observed_monthly_adjusted_subsistence_thousand_rials =
+      weighted_mean_monthly_adjusted_subsistence / 1000,
+    observed_monthly_CTP_deduction_thousand_rials =
+      weighted_mean_monthly_CTP_deduction / 1000,
+    observed_share_food_below_subsistence_percent =
+      100 * weighted_share_food_below_subsistence,
     observed_monthly_OOP_thousand_rials =
       weighted_mean_monthly_OOP / 1000
   ) |>
@@ -1252,6 +1279,15 @@ che_benchmark_comparison <- che_construction_diagnostics |>
     difference_monthly_food_expenditure_thousand_rials =
       observed_monthly_food_expenditure_thousand_rials -
       published_monthly_food_expenditure_thousand_rials,
+    difference_monthly_poverty_line_thousand_rials =
+      observed_monthly_poverty_line_thousand_rials -
+      published_monthly_poverty_line_thousand_rials,
+    published_implied_monthly_CTP_deduction_thousand_rials =
+      published_monthly_total_expenditure_thousand_rials -
+      published_monthly_capacity_to_pay_thousand_rials,
+    difference_monthly_CTP_deduction_thousand_rials =
+      observed_monthly_CTP_deduction_thousand_rials -
+      published_implied_monthly_CTP_deduction_thousand_rials,
     difference_monthly_capacity_to_pay_thousand_rials =
       observed_monthly_capacity_to_pay_thousand_rials -
       published_monthly_capacity_to_pay_thousand_rials,
