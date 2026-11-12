@@ -506,8 +506,8 @@ final_health_data <- health_data |>
 # Capacity to pay is defined as household expenditure remaining
 # after subsistence expenditure.
 #
-# Subsistence expenditure is estimated using households in the 45th-55th
-# percentiles of total household consumption expenditure.
+# For the 2018 benchmark, subsistence expenditure is estimated from
+# households whose food expenditure share is between 45% and 55%.
 #
 # Household-size adjustment follows the equivalence scale:
 #
@@ -577,18 +577,17 @@ final_health_data <- final_health_data |>
 ############################################################
 
 # The primary specification follows Yazdi-Feyzabadi et al. (2018):
-# households are ranked by food expenditure as a share of total expenditure,
-# separately by year and residence. The 45th-55th percentile group is used
-# to estimate subsistence expenditure. Percentile ranks are unweighted;
-# the mean equivalent food expenditure within the reference group is weighted.
+# the reference group consists of households whose food expenditure is
+# between 45% and 55% of total expenditure, separately by residence.
+# The poverty line is the weighted mean of equivalent food expenditure
+# within this reference group.
 #
 # Total-consumption-expenditure ranking is retained as an alternative
-# specification following Ghiasvand et al. (2015).
+# candidate specification, pending full reconciliation to its source paper.
 
 final_health_data <- final_health_data |>
   group_by(year, residence_type) |>
   mutate(
-    food_share_percentile = percent_rank(food_expenditure_share),
     total_expenditure_percentile = percent_rank(total_expenditure)
   ) |>
   ungroup()
@@ -603,12 +602,12 @@ final_health_data <- final_health_data |>
   mutate(
     subsistence_expenditure = weighted.mean(
       equivalent_food_expenditure[
-        food_share_percentile >= 0.45 &
-          food_share_percentile <= 0.55
+        food_expenditure_share > 0.45 &
+          food_expenditure_share < 0.55
       ],
       weight[
-        food_share_percentile >= 0.45 &
-          food_share_percentile <= 0.55
+        food_expenditure_share > 0.45 &
+          food_expenditure_share < 0.55
       ],
       na.rm = TRUE
     ),
