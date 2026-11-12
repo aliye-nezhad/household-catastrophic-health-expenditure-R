@@ -301,6 +301,28 @@ sampling_candidate_summary <- bind_rows(
   })
 )
 
+# Check whether the same block identifier recurs across survey quarters
+# within province and residence. This helps determine whether Fasl belongs
+# in the PSU identifier; it does not assign design roles by itself.
+block_fasl_reuse <- households |>
+  mutate(
+    province_code = substr(Address, 2, 3),
+    block = as.character(block),
+    Fasl = as.character(Fasl)
+  ) |>
+  filter(!is.na(block), !is.na(Fasl)) |>
+  distinct(survey_residence, province_code, block, Fasl) |>
+  group_by(survey_residence, province_code, block) |>
+  summarise(fasl_count = n_distinct(Fasl), .groups = "drop") |>
+  group_by(survey_residence, province_code) |>
+  summarise(
+    unique_blocks = n(),
+    blocks_observed_in_multiple_fasls = sum(fasl_count > 1),
+    share_blocks_observed_in_multiple_fasls = mean(fasl_count > 1),
+    max_fasls_per_block = max(fasl_count),
+    .groups = "drop"
+  )
+
 
 # Summary of the full sample and its match to the medical table.
 sample_summary <- households |>
@@ -319,34 +341,45 @@ write.csv(variable_inventory, "outputs/diagnostics/household_variable_inventory.
 write.csv(design_candidate_fields, "outputs/diagnostics/design_candidate_fields.csv", row.names = FALSE)
 write.csv(sample_summary, "outputs/diagnostics/household_sample_summary.csv", row.names = FALSE)
 
-if (!is.null(income_rank_distribution)) {
-  write.csv(
+write.csv(
   income_rank_distribution,
   "outputs/diagnostics/income_rank_candidate_distribution.csv",
   row.names = FALSE
 )
-if (!is.null(income_rank_crosswalk)) {
-  write.csv(
-    income_rank_crosswalk,
-    "outputs/diagnostics/C11_C11New_crosswalk.csv",
-    row.names = FALSE
-  )
+write.csv(
+  income_rank_crosswalk,
+  "outputs/diagnostics/C11_C11New_crosswalk.csv",
+  row.names = FALSE
+)
+write.csv(
+  household_size_crosswalk,
+  "outputs/diagnostics/C01_C01New_crosswalk.csv",
+  row.names = FALSE
+)
+write.csv(
+  sampling_candidate_summary,
+  "outputs/diagnostics/Fasl_block_design_candidates.csv",
+  row.names = FALSE
+)
+write.csv(
+  block_fasl_reuse,
+  "outputs/diagnostics/block_fasl_reuse_by_province.csv",
+  row.names = FALSE
+)
+
+captured_warnings <- warnings()
+warning_messages <- if (is.null(captured_warnings)) {
+  character()
+} else {
+  vapply(captured_warnings, conditionMessage, character(1))
 }
-if (!is.null(household_size_crosswalk)) {
-  write.csv(
-    household_size_crosswalk,
-    "outputs/diagnostics/C01_C01New_crosswalk.csv",
-    row.names = FALSE
-  )
-}
-if (!is.null(sampling_candidate_summary)) {
-  write.csv(
-    sampling_candidate_summary,
-    "outputs/diagnostics/Fasl_block_design_candidates.csv",
-    row.names = FALSE
-  )
-}
-}
+writeLines(
+  c(
+    paste0("Captured warning count: ", length(warning_messages)),
+    warning_messages
+  ),
+  "outputs/diagnostics/source_audit_warnings.txt"
+)
 
 summary_lines <- c(
   "1393 HEIS source-data audit",
@@ -361,8 +394,12 @@ summary_lines <- c(
   paste0("Household addresses without medical records (count only): ", household_only_address_count),
   paste0("Household-file variables matching design/identifier patterns: ",
          paste(unique(design_candidate_fields$variable), collapse = ", ")),
+  paste0("Households with missing or non-positive weights: ",
+         sum(is.na(coverage$analysis_weight) | coverage$analysis_weight <= 0)),
   "",
   "Provision-method totals and household coverage are in the accompanying CSV files.",
+  "C11New and C01New are compared with their original fields but are not selected automatically.",
+  "Fasl and block remain candidate design fields pending confirmation from survey documentation.",
   "This audit is descriptive only; it does not assign zero health spending to unmatched households."
 )
 
@@ -375,7 +412,13 @@ expected <- c(
   "outputs/diagnostics/household_variable_inventory.csv",
   "outputs/diagnostics/design_candidate_fields.csv",
   "outputs/diagnostics/household_sample_summary.csv",
-  "outputs/diagnostics/source_data_audit.txt"
+  "outputs/diagnostics/income_rank_candidate_distribution.csv",
+  "outputs/diagnostics/C11_C11New_crosswalk.csv",
+  "outputs/diagnostics/C01_C01New_crosswalk.csv",
+  "outputs/diagnostics/Fasl_block_design_candidates.csv",
+  "outputs/diagnostics/block_fasl_reuse_by_province.csv",
+  "outputs/diagnostics/source_data_audit.txt",
+  "outputs/diagnostics/source_audit_warnings.txt"
 )
 
 missing <- expected[!file.exists(expected) | file.info(expected)$size <= 0]
@@ -383,4 +426,4 @@ if (length(missing) > 0) {
   stop("Source-data audit outputs missing or empty: ", paste(missing, collapse = ", "))
 }
 
-message("SOURCE-DATA AUDIT PASSED: ", length(expected), " diagnostic files created.")
+message("SOURCE-DATA AUDIT PASSED: ", length(expected), " diagnostic files validated.")
