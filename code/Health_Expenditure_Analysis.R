@@ -1167,22 +1167,14 @@ che_specification_sensitivity <- bind_rows(
     "capacity_to_pay",
     "All recorded Table 6 acquisition methods (diagnostic only)",
     "annual_health_expenditure_all_methods"
-  ) |>
-    mutate(
-      weighted_mean_annual_health_expenditure =
-        weighted_mean_annual_health_expenditure * 12
-    ),
+  ),
   summarise_che_specification(
     final_health_data,
     "Total-consumption percentile reference group (Ghiasvand et al., 2015)",
     "capacity_to_pay_total_rank",
     "All recorded Table 6 acquisition methods (diagnostic only)",
-    "health_expenditure_all_methods"
-  ) |>
-    mutate(
-      weighted_mean_annual_health_expenditure =
-        weighted_mean_annual_health_expenditure * 12
-    )
+    "annual_health_expenditure_all_methods"
+  )
 ) |>
   mutate(
     weighted_CHE_prevalence_percent = 100 * weighted_CHE_prevalence
