@@ -19,7 +19,7 @@ The workflow combines household demographic and expenditure information with hea
 | `catastrophic_health_expenditure` | CHE indicator based on the baseline threshold | Dependent variable |
 | `annual_health_expenditure` | Annualized purchased medical expenditure from Table 6 (provision-method code 1) | CHE numerator; CPI adjustment remains outstanding |
 | `capacity_to_pay` | Household expenditure remaining after subsistence needs | CHE denominator |
-| `income_rank` | Household economic-position indicator | Main socioeconomic variable |
+| `income_rank` | C11New, the weighted income-decile candidate | Main socioeconomic variable |
 | `residence_type` | Urban/rural classification | Household characteristic |
 | `household_size` | Number of household members | Household characteristic |
 | `age` | Age of household head | Demographic characteristic |
@@ -49,7 +49,11 @@ CHE = 0 otherwise
 
 The baseline threshold is 40% of capacity to pay. The script also estimates alternative 30% and 50% thresholds.
 
-The implementation currently uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are provisional implementation choices, not yet confirmed as the exact benchmark specification. The numerator now excludes non-purchased provision methods. It is not yet adjusted using the interview-month, item-specific CPI series.
+The implementation currently uses a food-expenditure-share reference group between the 45th and 55th percentiles and an equivalence-scale exponent of 0.56. These are provisional implementation choices, not yet confirmed as the exact benchmark specification. The numerator includes provision-method code 1 (cash purchase) and excludes codes 2–8, consistent with the HEIS questionnaire's acquisition categories and the independent HEIS processing script.
+
+The source audit finds that original C11 has nearly equal unweighted counts across its ten categories, whereas C11New has nearly equal weighted totals within rural and urban samples. The analysis therefore uses C11New as the weighted income-decile candidate and retains C11 as a separate field for sensitivity checks. This empirical interpretation still requires confirmation against the official variable metadata.
+
+The health numerator is annualized from monthly Table 6 values. The item-specific CPI series and interview-month linkage used in the independent HEIS processing workflow are not included in this repository, so the numerator remains nominal and the CHE estimates remain provisional.
 
 ## Empirical workflow
 
@@ -166,8 +170,8 @@ The workflow is an execution check; a successful run does not by itself validate
 - The estimates are conditional associations, not causal effects.
 - CHE estimates depend on the threshold and the construction of subsistence expenditure and capacity to pay.
 - Household survey estimates depend on the quality of the underlying survey variables, weights, and identifiers.
-- The current survey-design declaration uses `ids = ~1` and household weights. It does not explicitly model strata or clusters.
-- The current workflow does not yet pin package versions through a lockfile.
+- The current survey-design declaration uses `ids = ~1` and household weights. Candidate fields `Fasl` and `block` have been audited, but their roles as strata, PSUs, or nested sampling identifiers are not confirmed. Standard errors therefore do not yet reflect a verified multistage design.
+- The workflow resolves direct R package dependencies through `setup-r-dependencies` and caches them by dependency signature. It does not yet commit a permanent `renv.lock` file.
 - The source variable definitions, expenditure annualization, OOP classification, item-specific CPI adjustment, household merges, and subsistence-expenditure calculation should be verified against the original survey documentation before the estimates are used in research conclusions.
 - The published 2014 analytical sample differs from the current constructed sample by two urban observations; this discrepancy is documented and unresolved.
 - The current code should be treated as an evolving replication audit, not a validated reproduction of the published estimates.
