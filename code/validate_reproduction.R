@@ -1,6 +1,5 @@
-# Integration checks for the frozen 1393 inputs in data/raw.sha256.
-# The numerical reference is the prior successful nominal run (482f4ce),
-# independently of the published prevalence comparison.
+# Compare results with the nominal estimates at 482f4ce and check the
+# data linkage, tables, and figure.
 check <- function(condition, message) {
   if (!isTRUE(condition)) stop(message, call. = FALSE)
 }
@@ -91,4 +90,4 @@ check(
   "The economic-quintile figure is not a readable PNG."
 )
 
-message("REPRODUCTION CHECKS PASSED: Access provenance, sample, prevalence, models and Word tables.")
+message("The sample counts and nominal estimates match the reference results.")

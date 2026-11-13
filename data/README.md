@@ -10,6 +10,6 @@ The Statistical Center of Iran collected the Household Expenditure and Income Su
 
 The two medical extracts match all 68,217 Table 6 records in the Access archive on household identifier, item code, acquisition method, and amount. The comparison converts the original item codes to the numeric form used in the extracts. The archive also links the interview month to every household in the workbooks and to every medical record. [Linkage counts](../outputs/diagnostics/access_linkage.csv)
 
-The run checks the [SHA-256 hashes](raw.sha256) before reading the input files. The extracted workbooks, database, and record-level audit files are held in temporary storage during the run. The saved linkage results contain aggregate counts.
+The extracted workbooks, Access database, and record-level linkage files are used in a temporary directory. The linkage table reports aggregate counts. The survey archives and extracts can be checked against their recorded hashes. [SHA-256 hashes](raw.sha256)
 
 The estimates use nominal expenditure amounts. An item-level price adjustment requires the 1393 item-to-CPI crosswalk and monthly item price indices. The official strata and primary sampling-unit identifiers are needed for full survey-design variance estimation. [Survey processing notes](https://m-hoseini.github.io/HEIS/cleaning-data.html)

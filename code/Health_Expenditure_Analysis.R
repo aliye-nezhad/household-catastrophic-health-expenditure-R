@@ -1,22 +1,5 @@
-############################################################
-# Household Catastrophic Health Expenditure Analysis
-#
-# Purpose:
-# This script constructs a household-level dataset from survey
-# data, performs data cleaning and variable construction,
-# estimates survey-weighted logistic regression models, and
-# exports analytical outputs.
-#
-# Workflow:
-# 1. Import household survey data
-# 2. Merge household-level files
-# 3. Clean variables and construct indicators
-# 4. Define catastrophic health expenditure
-# 5. Estimate survey-weighted logistic regressions
-# 6. Export tables
-#
-# Author: Redacted
-############################################################
+# Catastrophic health expenditure in Iran's 1393 household survey.
+# Link Table 6 spending to households and estimate survey-weighted logit models.
 
 
 ############################################################
@@ -31,7 +14,6 @@ library(labelled)
 library(survey)
 library(ggplot2)
 
-# Use the native Word writer so report generation uses the locked R libraries.
 write_regression_table <- function(models, title, path) {
   counts <- vapply(models, function(model) {
     format(stats::nobs(model), big.mark = ",", scientific = FALSE)
@@ -67,16 +49,12 @@ write_regression_table <- function(models, title, path) {
   flextable::save_as_docx(table, path = path)
 }
 
-# Reproducibility seed
 set.seed(1234)
 
 
 ############################################################
 # 1.1 Create Output Directories
 ############################################################
-
-# Create reproducible output folders used by exported tables
-# and figures.
 
 dir.create(
   "outputs/tables",
@@ -102,9 +80,7 @@ dir.create(
 # 2. Import Survey Data
 ############################################################
 
-# The original household expenditure components are supplied
-# as committed RDS files. Using these files directly avoids a
-# platform-specific Microsoft Access / ODBC dependency.
+# Rural and urban extracts from Table 6 of the survey.
 
 R93P3S06 <- readRDS("data/raw/R93P3S06.rds")
 U93P3S06 <- readRDS("data/raw/U93P3S06.rds")
@@ -130,28 +106,14 @@ normalize_household_id <- function(x) {
 
 
 ############################################################
-# 3. Prepare Imported Data
+# 3. Construct Household Health Expenditure Variable
 ############################################################
 
-# The source RDS files are read directly from data/raw/.
-# No intermediate copies are written to the repository root.
-
-
-############################################################
-# 4. Construct Household Health Expenditure Variable
-############################################################
-
-# Aggregate the monthly health-expenditure records to one row per
-# household. Only provision-method code 1 (purchased) enters the OOP
-# numerator. Codes 2-8 are non-monetary acquisition methods in the
-# independent HEIS processing script (93.R). The all-method total is
-# retained separately for audit purposes. Households with no medical-table
-# records receive zero recorded expenditure in this table.
-#
-# IMPORTANT: this creates nominal annual OOP by multiplying the monthly
-# Table 6 amount by 12. Item-specific, interview-month CPI deflation is not
-# yet implemented because the required CPI and Global-code source files
-# are not present in this repository.
+# Sum purchased items (DYCOL02 = 1) to measure out-of-pocket spending.
+# Keep the total across all acquisition methods for the sensitivity table.
+# Table 6 reports monthly nominal amounts. Multiply them by 12 to match
+# the annual household totals. Item-level deflation requires the 1393
+# item-to-CPI crosswalk and monthly price indices.
 
 aggregate_health_expenditure <- function(data) {
   data <- data |>
@@ -162,8 +124,7 @@ aggregate_health_expenditure <- function(data) {
         suppressWarnings(as.numeric(as.character(DYCOL03)))
     )
 
-  # HEIS provision-method code 1 means purchased. Codes 2-8 represent
-  # non-cash acquisition methods and must not enter the OOP numerator.
+  # The HEIS coding distinguishes purchased items (1) from noncash items (2-8).
   if (anyNA(data$Address) || any(!grepl("^[12][0-9]{10}$", data$Address))) {
     stop("Table 6 contains missing or malformed household identifiers.")
   }
@@ -175,7 +136,7 @@ aggregate_health_expenditure <- function(data) {
   if (any(invalid_method)) {
     stop(
       "Unmapped or missing medical provision-method codes found. ",
-      "Review DYCOL02 before constructing out-of-pocket expenditure."
+      "Check the DYCOL02 codes against the survey documentation."
     )
   }
 
@@ -211,7 +172,7 @@ if (anyDuplicated(R93_health$Address) || anyDuplicated(U93_health$Address)) {
   stop("Health expenditure aggregation did not produce unique household identifiers.")
 }
 ############################################################
-# 5. Import External Household Files
+# 4. Import External Household Files
 ############################################################
 
 # Import the analysis fields as text, preserving the identifier and category
@@ -241,15 +202,12 @@ if (anyNA(R93$Address) || any(!grepl("^2[0-9]{10}$", R93$Address)) ||
 
 
 ############################################################
-# 6. Merge Household Information
+# 5. Merge Household Information
 ############################################################
 
-# Merge household characteristics with health expenditure data
-
-# Preserve the complete household sample. A household with no row in
-# the medical-expenditure table has no recorded health expenditure in
-# that table; the independent HEIS processing script likewise fills
-# absent expenditure categories with zero after a household-level join.
+# Keep every household in the workbooks. A household absent from Table 6
+# has zero recorded spending in that module, following the HEIS processing
+# convention for absent expenditure categories.
 merge_rural <- R93 |>
   left_join(R93_health, by = "Address", relationship = "one-to-one")
 
@@ -281,7 +239,7 @@ if (anyDuplicated(health_data$Address)) {
 
 
 ############################################################
-# 7. Rename Variables
+# 6. Rename Variables
 ############################################################
 
 # Rename original survey variables into meaningful names
@@ -301,7 +259,7 @@ health_data <- health_data |>
 
 
 ############################################################
-# 8. Create Variable Labels
+# 7. Create Variable Labels
 ############################################################
 
 # Add descriptive labels for easier interpretation
@@ -323,7 +281,7 @@ var_label(health_data) <- list(
 
 
 ############################################################
-# 9. Construct Geographic Variables
+# 8. Construct Geographic Variables
 ############################################################
 
 # Household address codes contain geographic information.
@@ -351,7 +309,7 @@ health_data$residence_type <- factor(
 
 
 ############################################################
-# 10. Convert Categorical Variables
+# 9. Convert Categorical Variables
 ############################################################
 
 # Gender
@@ -379,7 +337,7 @@ health_data$literacy <- factor(
 
 
 ############################################################
-# 11. Additional Cleaning
+# 10. Additional Cleaning
 ############################################################
 
 # Survey year
@@ -405,9 +363,7 @@ health_data <- health_data |>
     )
   )
 
-# The benchmark excludes households with unreported food expenditure.
-# Build one scalar summary per residence directly from the household-level
-# data. This avoids relying on vector comparisons inside scalar if() calls.
+# Count households before and after excluding missing food expenditure.
 summarise_sample_by_residence <- function(data, residence) {
   data |>
     filter(as.character(residence_type) == residence) |>
@@ -497,7 +453,7 @@ health_data <- health_data |>
 
 
 ############################################################
-# 12. Construct Basic Expenditure Indicators
+# 11. Construct Basic Expenditure Indicators
 ############################################################
 
 health_data <- health_data |>
@@ -511,7 +467,7 @@ health_data <- health_data |>
 
 
 ############################################################
-# 13. Create Final Analytical Dataset
+# 12. Create Final Analytical Dataset
 ############################################################
 
 final_health_data <- health_data |>
@@ -585,7 +541,7 @@ if (any(!is.finite(final_health_data$annual_health_expenditure) |
 ############################################################
 
 ############################################################
-# 14. Construct Household Equivalence Scale
+# 13. Construct Household Equivalence Scale
 ############################################################
 
 # Adjust household consumption needs according to household size.
@@ -603,7 +559,7 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 15. Calculate Equivalent Food Expenditure
+# 14. Calculate Equivalent Food Expenditure
 ############################################################
 
 # Convert household food expenditure into equivalent
@@ -620,7 +576,7 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 16. Calculate Food Expenditure Share
+# 15. Calculate Food Expenditure Share
 ############################################################
 
 # Food expenditure share is used to identify the reference
@@ -637,7 +593,7 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 17. Identify the Food-Share Reference Group
+# 16. Identify the Food-Share Reference Group
 ############################################################
 
 # The primary specification follows Yazdi-Feyzabadi et al. (2018):
@@ -659,7 +615,7 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 18. Estimate Subsistence Expenditure
+# 17. Estimate Subsistence Expenditure
 ############################################################
 
 final_health_data <- final_health_data |>
@@ -692,7 +648,7 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 19. Calculate Household-Specific Subsistence Need
+# 18. Calculate Household-Specific Subsistence Need
 ############################################################
 
 # Adjust subsistence expenditure according to household size.
@@ -707,7 +663,7 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 20. Calculate Capacity To Pay
+# 19. Calculate Capacity To Pay
 ############################################################
 
 # Capacity to pay is expenditure remaining after basic
@@ -737,7 +693,7 @@ if (any(!is.finite(final_health_data$capacity_to_pay) |
 }
 
 ############################################################
-# 21. Identify Poor Households
+# 20. Identify Poor Households
 ############################################################
 
 # Households whose total expenditure is below subsistence
@@ -763,12 +719,10 @@ final_health_data <- final_health_data |>
 
 
 ############################################################
-# 22. Construct Catastrophic Health Expenditure Indicator
+# 21. Construct Catastrophic Health Expenditure Indicator
 ############################################################
 
-# Main outcome variable:
-# Catastrophic health expenditure occurs when out-of-pocket
-# health spending exceeds 40% of capacity to pay.
+# Out-of-pocket spending of at least 40% of capacity to pay counts as CHE.
 
 final_health_data <- final_health_data |>
   
@@ -792,11 +746,10 @@ if (any(!is.finite(final_health_data$health_expenditure_ratio)) ||
 }
 
 ############################################################
-# 23. Descriptive Statistics
+# 22. Descriptive Statistics
 ############################################################
 
-# Export reproducible descriptive statistics to a standards-compliant
-# Excel workbook. Identifier fields are excluded from the summaries.
+# Summarize household characteristics without including record identifiers.
 
 numeric_variables <- names(final_health_data)[
   vapply(final_health_data, is.numeric, logical(1))
@@ -889,7 +842,7 @@ writexl::write_xlsx(
 
 
 ############################################################
-# 24. Define Survey Design
+# 23. Define Survey Design
 ############################################################
 
 # Apply household survey weights.
@@ -907,16 +860,10 @@ survey_design <- svydesign(
 
 
 ############################################################
-# 25. Main Logistic Regression Model
+# 24. Main Logistic Regression Model
 ############################################################
 
-# Estimate determinants of catastrophic health expenditure.
-#
-# Dependent variable:
-# catastrophic_health_expenditure
-#
-# Explanatory variables:
-# socioeconomic and demographic household characteristics
+# Estimate how CHE varies with household characteristics.
 
 
 model_main <- svyglm(
@@ -938,7 +885,7 @@ model_main <- svyglm(
 
 
 ############################################################
-# 26. Regression Results
+# 25. Regression Results
 ############################################################
 
 # Display regression output
@@ -959,7 +906,7 @@ odds_ratios_main
 
 
 ############################################################
-# 27. Export Main Regression Table
+# 26. Export Main Regression Table
 ############################################################
 
 write_regression_table(
@@ -971,7 +918,7 @@ write_regression_table(
 
 
 ############################################################
-# 28. Robustness Analysis: Urban Households
+# 27. Robustness Analysis: Urban Households
 ############################################################
 
 # Estimate model for urban households only, using the same neutral economic-rank field.
@@ -1003,13 +950,11 @@ summary(model_urban)
 
 
 ############################################################
-# 29. Large-Household Outcome-Support Diagnostics
+# 28. Case counts in larger households
 ############################################################
 
-# The previous large-household logit produced extreme odds ratios and
-# standard errors, consistent with sparse cells or separation. Do not
-# present that unstable specification as a substantive result. Export
-# the outcome support by economic-rank category for transparent diagnosis.
+# Some economic-rank groups have few or no CHE cases among households with
+# more than six members. Report the counts by rank.
 
 large_household_support <- final_health_data |>
   filter(
@@ -1039,10 +984,9 @@ write.csv(
 
 writeLines(
   c(
-    "Large-household logistic regression not reported.",
-    "The previous specification produced extreme estimates and standard errors,",
-    "consistent with sparse outcome support or separation.",
-    "See large_household_support.csv before selecting an alternative specification."
+    "Some economic-rank groups have few or no cases among households with more than six members.",
+    "The separate logit gave extreme estimates and standard errors, consistent with sparse cells or separation.",
+    "The case counts by rank are in large_household_support.csv."
   ),
   "outputs/tables/large_household_model_status.txt"
 )
@@ -1050,7 +994,7 @@ writeLines(
 
 
 ############################################################
-# 30. Export Multiple Models
+# 29. Export Multiple Models
 ############################################################
 
 write_regression_table(
@@ -1087,11 +1031,9 @@ final_health_data <- final_health_data |>
 
 
 # Export measurement diagnostics by residence and for the full sample.
-# The benchmark reports a national poverty line as well as rural and urban
-# lines. The national line must be estimated from the national 45%-55%
-# food-share reference group; it is not the weighted average of the two
-# residence-specific lines. This national line is diagnostic only: the
-# household-level CHE outcome continues to use the residence-specific line.
+# Estimate the national line from the national 45%-55% food-share group
+# for comparison with the published table. Household CHE uses the rural
+# or urban line according to residence.
 national_reference_group <- final_health_data$food_expenditure_share > 0.45 &
   final_health_data$food_expenditure_share < 0.55
 if (!any(national_reference_group)) {
@@ -1235,10 +1177,8 @@ write.csv(
   row.names = FALSE
 )
 
-# Compare the two published subsistence-reference-group approaches and
-# two medical-numerator definitions. "All Table 6 values" is diagnostic only:
-# it includes non-purchased acquisition methods and must not be interpreted
-# as an OOP measure without further validation of the questionnaire coding.
+# Compare the two published subsistence reference groups using purchased
+# medical items alone and using all Table 6 items, including noncash acquisitions.
 summarise_che_specification <- function(
   data,
   reference_method,
@@ -1321,10 +1261,9 @@ write.csv(
 )
 
 
-# Compare the current weighted CHE prevalence with the published 2014
-# benchmark reported by Yazdi-Feyzabadi et al. (2018). This is a diagnostic,
-# not an assertion that the measures are identical: CPI treatment, numerator
-# scope, and sampling-design implementation still require reconciliation.
+# Compare the nominal estimates with the 2014 figures in Yazdi-Feyzabadi
+# et al. (2018). Price adjustment, the scope of out-of-pocket spending,
+# and survey design may affect the comparison.
 published_che_benchmark <- tibble(
   residence_group = c("All", "Rural", "Urban"),
   published_2014_weighted_CHE_prevalence_percent = c(3.15, 4.38, 2.69),
@@ -1403,17 +1342,14 @@ write.csv(
 )
 
 ############################################################
-# 31. Final Research Extensions
+# 30. Final Research Extensions
 ############################################################
 
 # Economic quintile analysis
 
-# Preserve C11 as the primary decile variable used in the original project
-# specification. C11New is retained as an alternative candidate because
-# its weighted distribution differs materially, especially in urban areas.
-# Neither variable is labelled as income- or expenditure-based until the
-# official 1393 variable metadata are verified.
-# Map adjacent deciles into quintiles explicitly.
+# Group adjacent C11 economic ranks in pairs. C11New has a different
+# weighted distribution, especially in urban areas. The codebook is
+# needed to establish what the two fields rank.
 
 economic_decile <- suppressWarnings(
   as.integer(as.character(final_health_data$economic_rank))
@@ -1483,7 +1419,7 @@ income_plot <- ggplot(
   )
 
 
-# Use the font shipped in the locked environment on every Linux runner.
+# Use the Ubuntu font listed in pixi.lock.
 plot_font <- file.path(Sys.getenv("CONDA_PREFIX"), "fonts", "Ubuntu-R.ttf")
 if (file.exists(plot_font)) {
   systemfonts::register_font("Ubuntu (Pixi)", plain = plot_font)
@@ -1643,8 +1579,7 @@ write.csv(
 # Main Model Confidence Intervals
 ############################################################
 
-# Export confidence intervals for the main survey-weighted
-# logistic regression model.
+# Calculate confidence intervals for the main model.
 
 main_model_confidence_intervals <- confint(model_main)
 
@@ -1652,7 +1587,7 @@ main_model_confidence_intervals
 
 
 ############################################################
-# FINAL CLEAN VALIDATION
+# Missing values and session details
 ############################################################
 
 # Confirm final analytical dataset
@@ -1672,7 +1607,7 @@ write.csv(
   row.names = FALSE
 )
 
-# Validate the constructed outcome before estimation.
+# The outcome should contain only zeros and ones.
 observed_CHE_values <- unique(
   na.omit(final_health_data$catastrophic_health_expenditure)
 )
@@ -1680,13 +1615,13 @@ if (!all(observed_CHE_values %in% c(0, 1))) {
   stop("The catastrophic health expenditure outcome is not binary.")
 }
 
-# Preserve the R version, locale, BLAS and loaded package versions in the run.
+# Record R, package versions, locale, and BLAS.
 writeLines(capture.output(sessionInfo()), "outputs/diagnostics/session_info.txt")
 
 
 
 
-# Preserve warnings rather than allowing Rscript to report only a count.
+# Save the warnings with the results.
 captured_warnings <- warnings()
 warning_text <- if (is.null(captured_warnings)) {
   "No warnings recorded."
@@ -1705,11 +1640,8 @@ writeLines(
 )
 
 ############################################################
-# OUTPUT VALIDATION
+# Result files
 ############################################################
-
-# Verify that the principal files generated by this analysis
-# exist and are non-empty before reporting successful completion.
 
 expected_outputs <- c(
   "outputs/tables/summary_statistics.xlsx",
@@ -1740,12 +1672,12 @@ missing_outputs <- expected_outputs[
 
 if (length(missing_outputs) > 0) {
   stop(
-    "Output validation failed. Missing or empty files: ",
+    "Missing or empty result files: ",
     paste(missing_outputs, collapse = ", ")
   )
 }
 
-# Validate that the Excel workbook is readable, not merely non-empty.
+# Read both sheets back from the workbook.
 tryCatch(
   {
     workbook_path <- "outputs/tables/summary_statistics.xlsx"
@@ -1766,18 +1698,10 @@ tryCatch(
   },
   error = function(e) {
     stop(
-      "Excel output validation failed: ",
+      "Could not read the sample workbook: ",
       conditionMessage(e)
     )
   }
 )
 
-message(
-  "OUTPUT VALIDATION PASSED: ",
-  length(expected_outputs),
-  " expected outputs exist, are non-empty, and the Excel workbook is readable."
-)
-
-############################################################
-# END OF ANALYSIS
-############################################################
+message("Saved the household expenditure results in outputs/.")

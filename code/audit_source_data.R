@@ -1,10 +1,5 @@
-############################################################
-# Source-data audit for the 1393 Iranian HEIS CHE project
-#
-# This script does not alter the analysis dataset or estimate CHE.
-# It audits household coverage, medical-record coverage, provision
-# methods, income-rank values, weights, and candidate design fields.
-############################################################
+# Compare the household workbooks and medical extracts with the 1393 HEIS
+# Access database. Summarize acquisition methods, ranks, and survey fields.
 
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(readxl))
@@ -117,8 +112,7 @@ overall_coverage <- coverage |>
 
 coverage_summary <- bind_rows(coverage_summary, overall_coverage)
 
-# Report only aggregate match diagnostics. Do not write household Address
-# identifiers into workflow artifacts.
+# Report aggregate match counts so household identifiers stay private.
 duplicate_household_count <- households |>
   count(survey_residence, Address, name = "row_count") |>
   filter(row_count > 1) |>
@@ -132,10 +126,8 @@ household_only_address_count <- household_keys |>
   anti_join(medical_keys, by = c("survey_residence", "Address")) |>
   nrow()
 
-# DYCOL02 records how the item was obtained, not the type of
-# healthcare provider. Codes 2-8 are non-monetary acquisition methods.
-# Labels follow the HEIS questionnaire documentation and its description
-# of non-monetary income.
+# DYCOL02 records how the household obtained the item. Codes 2-8 cover
+# noncash acquisition methods listed in the HEIS documentation.
 method_labels <- c(
   "1" = "Purchased",
   "2" = "Home-produced",
@@ -201,7 +193,6 @@ variable_inventory <- bind_rows(
   inventory_one(urban_households, "Urban")
 )
 
-# Use base R only here; no stringr dependency is required.
 design_pattern <- paste(
   "strata", "cluster", "psu", "block", "province", "county",
   "address", "urban", "rural", "season", "fasl", "weight",
@@ -213,11 +204,8 @@ design_candidate_fields <- variable_inventory |>
   filter(grepl(design_pattern, variable, ignore.case = TRUE)) |>
   arrange(survey_residence, variable)
 
-# C11 is preserved as a raw category here. The audit does not assume its
-# coding until the 1393 codebook and source values have been reconciled.
-# Compare original and alternate income-rank and household-size fields.
-# These diagnostics do not choose a preferred variable; the codebook must
-# establish the intended definitions before the analysis specification changes.
+# Compare the original and alternate rank and household-size fields.
+# The 1393 codebook is needed to establish how the ranks are defined.
 income_rank_distribution <- bind_rows(
   lapply(list(Rural = rural_households, Urban = urban_households), function(data) {
     bind_rows(lapply(intersect(c("C11", "C11New"), names(data)), function(variable) {
@@ -281,9 +269,8 @@ household_size_crosswalk <- bind_rows(
   })
 )
 
-# Fasl and block are candidate survey-design fields, not confirmed strata
-# or PSU identifiers. Report their empirical structure without assigning
-# design roles based on names alone.
+# Examine Fasl and block as possible survey-design fields. Their roles
+# as strata or primary sampling units need confirmation from the codebook.
 sampling_candidate_summary <- bind_rows(
   lapply(list(Rural = rural_households, Urban = urban_households), function(data) {
     if (!all(c("Fasl", "block", "weight") %in% names(data))) return(NULL)
@@ -307,9 +294,8 @@ sampling_candidate_summary <- bind_rows(
   })
 )
 
-# Check whether the same block identifier recurs across survey quarters
-# within province and residence. This helps determine whether Fasl belongs
-# in the PSU identifier; it does not assign design roles by itself.
+# Count block IDs that recur across survey quarters within the same
+# province and residence group. This helps assess how to identify a PSU.
 block_fasl_reuse <- households |>
   mutate(
     province_code = substr(Address, 2, 3),
@@ -455,7 +441,7 @@ warning_text <- if (is.null(captured_warnings)) {
 writeLines(
   c(
     paste0(
-      "Captured warning count: ",
+      "Warnings: ",
       if (is.null(captured_warnings)) 0L else length(captured_warnings)
     ),
     warning_text
@@ -464,7 +450,7 @@ writeLines(
 )
 
 summary_lines <- c(
-  "1393 HEIS source-data audit",
+  "1393 HEIS source files",
   paste0("Rural household rows: ", nrow(rural_households)),
   paste0("Urban household rows: ", nrow(urban_households)),
   paste0("Unique household addresses in combined household files: ", nrow(household_keys)),
@@ -480,12 +466,11 @@ summary_lines <- c(
          sum(is.na(coverage$analysis_weight) | coverage$analysis_weight <= 0)),
   "",
   "C11 has nearly equal unweighted counts; C11New has nearly equal weighted totals within residence.",
-  "The analysis retains C11 as the original project baseline and treats C11New as an alternative.",
-  "The official meaning of these derived decile fields (income versus expenditure) remains unverified; no substantive label is inferred from distributional patterns alone.",
+  "The main analysis uses C11 as the economic rank.",
+  "The official definitions are needed to determine whether C11 and C11New rank income or expenditure.",
   "C01New top-codes household size at 10; the original C01 preserves larger values.",
   "Fasl and block remain candidate design fields pending confirmation from survey documentation.",
-  "Provision-method totals and household coverage are in the accompanying CSV files.",
-  "This audit is descriptive only; it does not assign zero health spending to unmatched households."
+  "The CSVs list acquisition-method totals and household coverage. They count unmatched households separately."
 )
 
 writeLines(summary_lines, "outputs/diagnostics/source_data_audit.txt")
@@ -511,7 +496,7 @@ if (length(access_dir) == 1L) {
 
 missing <- expected[!file.exists(expected) | file.info(expected)$size <= 0]
 if (length(missing) > 0) {
-  stop("Source-data audit outputs missing or empty: ", paste(missing, collapse = ", "))
+  stop("Missing or empty source-data summaries: ", paste(missing, collapse = ", "))
 }
 
-message("SOURCE-DATA AUDIT PASSED: ", length(expected), " diagnostic files validated.")
+message("Saved ", length(expected), " source-data summaries.")

@@ -1,4 +1,4 @@
-name: R reproducibility
+name: Household health expenditure in R
 
 on:
   push:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   reproduce:
-    name: Run household CHE analysis
+    name: Run the household survey analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -39,10 +39,10 @@ jobs:
           tar -xzf "$archive" -C "$bin"
           echo "$bin" >> "$GITHUB_PATH"
 
-      - name: Reproduce from locked environment and check results
+      - name: Run the analysis with Pixi
         run: pixi run --locked reproduce
 
-      - name: Upload this run's validated outputs
+      - name: Save the result files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: household-che-research-outputs

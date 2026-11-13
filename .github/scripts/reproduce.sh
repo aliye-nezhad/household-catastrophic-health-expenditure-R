@@ -16,8 +16,7 @@ seven_zip="$(command -v 7zz || command -v 7z)" || {
 }
 sha256sum --strict --check data/raw.sha256
 
-# Each invocation works in its own directory and publishes only after all
-# checks pass. Historic files under outputs/ cannot satisfy these checks.
+# Use a fresh directory so each run has its own results.
 umask 077
 output_parent="${1:-reproduced}"
 mkdir -p -- "$output_parent"
@@ -34,7 +33,7 @@ ln -s "$repo_root/code" "$work/code"
   sha256sum pixi.lock
 } > "$work/outputs/diagnostics/input_sha256.txt"
 
-# Use the activated environment's R libraries and a consistent locale.
+# Use the R libraries from Pixi and a fixed locale.
 unset R_LIBS R_LIBS_SITE
 export R_LIBS_USER="$work/user-library"
 export TMPDIR="$work/tmp"
@@ -53,4 +52,4 @@ export TZ=UTC LC_ALL=C.UTF-8 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 )
 
 mv -T -- "$work/outputs" "$run_dir"
-echo "Reproduced outputs: $run_dir"
+echo "Results: $run_dir"

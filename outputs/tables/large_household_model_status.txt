@@ -1,4 +1,3 @@
-Large-household logistic regression not reported.
-The previous specification produced extreme estimates and standard errors,
-consistent with sparse outcome support or separation.
-See large_household_support.csv before selecting an alternative specification.
+Some economic-rank groups have few or no cases among households with more than six members.
+The separate logit gave extreme estimates and standard errors, consistent with sparse cells or separation.
+The case counts by rank are in large_household_support.csv.

@@ -1,6 +1,6 @@
 # Household Catastrophic Health Expenditure in Iran
 
-How common is catastrophic health spending in Iran, and how does it vary with household economic rank, place of residence, and demographics? I use the 1393 Household Expenditure and Income Survey (2014–15) to study this question across 38,189 households.
+I use Iran's 1393 Household Expenditure and Income Survey (2014–15) to estimate how often households face catastrophic health spending and how the rate varies by economic rank, residence, and household characteristics. The analysis covers 38,189 households.
 
 ## Data
 
@@ -24,7 +24,7 @@ I estimate subsistence spending separately for rural and urban households. Withi
 
 ## Empirical approach
 
-The main specification is a survey-weighted logistic regression with economic rank, residence, household size, and the age, gender, and literacy of the household head. The estimates describe conditional associations. The additional specifications use the urban subsample, province fixed effects, and an interaction between economic rank and residence. For larger households, the results give outcome counts by rank because some groups have few cases.
+The main specification is a survey-weighted logistic regression with economic rank, residence, household size, and the age, gender, and literacy of the household head. The estimates describe conditional associations. The additional specifications use the urban subsample, province fixed effects, and an interaction between economic rank and residence. For households with more than six members, the results give case counts by rank because some groups have few cases.
 
 I check thresholds of 30% and 50% and estimate an alternative subsistence line using households in the 45th–55th percentile of total expenditure. [Ghiasvand et al. (2015)](https://doi.org/10.5812/ircmj.30974)
 
@@ -47,19 +47,16 @@ The baseline uses household weights and treats households as independent samplin
 ## Repository structure
 
 ```text
-├── .github/
-│   ├── scripts/                            # Reproduction helpers
-│   └── workflows/r-reproducibility.yml
 ├── code/
-│   ├── Health_Expenditure_Analysis.R       # Main R analysis
+│   ├── Health_Expenditure_Analysis.R
 │   ├── audit_source_data.R
 │   └── validate_reproduction.R
 ├── data/
-│   ├── raw/                                # 1393 survey archives and medical extracts
+│   ├── raw/
 │   ├── raw.sha256
 │   └── README.md
 ├── outputs/
-│   ├── diagnostics/                        # Linkage, benchmark, and sensitivity checks
+│   ├── diagnostics/
 │   ├── figures/
 │   │   └── figure1_economic_quintile_CHE.png
 │   ├── tables/
@@ -72,9 +69,9 @@ The baseline uses household weights and treats households as independent samplin
 └── pixi.lock
 ```
 
-## Automated reproducibility
+## Run the analysis
 
-Install Pixi 0.84.2 or later on x86-64 Linux. On Windows, run the commands inside WSL2. The source files are included and the lockfile specifies R 4.4.3 and the required packages. The first run downloads the environment from conda-forge. [Pixi releases](https://github.com/prefix-dev/pixi/releases)
+Use Pixi 0.84.2 or later on x86-64 Linux, or inside WSL2 on Windows. The survey files are included. Pixi uses `pixi.lock` to install R 4.4.3 and the required packages from conda-forge. [Pixi releases](https://github.com/prefix-dev/pixi/releases)
 
 ```bash
 git clone https://github.com/aliye-nezhad/household-catastrophic-health-expenditure-R.git
@@ -82,9 +79,7 @@ cd household-catastrophic-health-expenditure-R
 pixi run --locked reproduce
 ```
 
-The command prints the path to the full results under `reproduced/run-*/`. For the results in this repository, start with the [sample workbook](outputs/tables/summary_statistics.xlsx), [main regression](outputs/tables/regression_results.docx), and [economic-rank figure](outputs/figures/figure1_economic_quintile_CHE.png). The [results guide](outputs/README.md) links the coefficient estimates, sensitivity tables, and published comparison.
-
-The [GitHub workflow](.github/workflows/r-reproducibility.yml) runs the same command and saves the results after the checks pass.
+The results from this command go in `reproduced/run-*/`. The results here include the sample workbook, main regression, economic-rank figure, and comparisons with published estimates. [Results guide](outputs/README.md)
 
 ## Author
 
