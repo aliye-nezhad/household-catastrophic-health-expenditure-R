@@ -1,13 +1,13 @@
 # Results for the 1393 household survey
 
-These tables and the figure use the 1393 household survey. [Analysis version `e9499c5`](https://github.com/aliye-nezhad/household-catastrophic-health-expenditure-R/commit/e9499c5393662f50ba5378baa2ffaf3dcd025819)
+The files in this directory are a historical results snapshot associated with analysis version [`e9499c5`](https://github.com/aliye-nezhad/household-catastrophic-health-expenditure-R/commit/e9499c5393662f50ba5378baa2ffaf3dcd025819). They are retained for reference and are not fresh outputs from the current `main` version. To reproduce the current analysis, run `pixi run --locked reproduce` from the repository root and inspect the new results under `reproduced/run-*/`. See the [main README](../README.md) for the reproduction procedure and validation checks.
 
 ## Sample, estimates, and figure
 
 | File | Contents |
 | --- | --- |
 | [Sample characteristics](tables/summary_statistics.xlsx) | Household summary statistics, counts, and weighted shares. |
-| [Main regression](tables/regression_results.docx) | Survey-weighted logit estimates reported as odds ratios. |
+| [Main regression](tables/regression_results.docx) | Household-weighted logistic estimates reported as odds ratios. |
 | [Final regression table](tables/CHE_final_regression_table.docx) | Baseline, province fixed effects, and the interaction between economic rank and residence. |
 | [Coefficient estimates](tables/regression_coefficients.csv) | Log-odds estimates, odds ratios, standard errors, and p-values across specifications. |
 | [Model comparison](tables/model_comparison.docx) | Baseline and urban-only specifications. |
@@ -18,8 +18,8 @@ The missing-data summary counts missing observations by variable. The large-hous
 
 ## Diagnostics
 
-- Weighted prevalence by residence and threshold. [Outcome construction](diagnostics/che_construction_diagnostics.csv)
+- Weighted CHE prevalence by residence and threshold. [Outcome construction](diagnostics/che_construction_diagnostics.csv)
 - Estimates and household counts alongside the published figures. [Published estimates](diagnostics/che_benchmark_comparison.csv) · [Household counts](diagnostics/sample_benchmark_comparison.csv)
-- Estimates under different spending definitions and subsistence reference groups. [Specification sensitivity](diagnostics/che_specification_sensitivity.csv) · [Subsistence reference groups](diagnostics/subsistence_reference_group_diagnostics.csv)
+- Estimates under alternative spending definitions and subsistence reference groups. [Specification sensitivity](diagnostics/che_specification_sensitivity.csv) · [Subsistence reference groups](diagnostics/subsistence_reference_group_diagnostics.csv)
 - Baseline and province-clustered standard errors. [Inference sensitivity](diagnostics/baseline_inference_sensitivity.csv)
-- Survey file hashes and aggregate matches to the Access database. [Input hashes](diagnostics/input_sha256.txt) · [Linkage counts](diagnostics/access_linkage.csv)
+- Survey-file hashes and aggregate matches to the Access database. [Input hashes](diagnostics/input_sha256.txt) · [Linkage counts](diagnostics/access_linkage.csv)
