@@ -7,7 +7,7 @@ The files in this directory are a historical results snapshot associated with an
 | File | Contents |
 | --- | --- |
 | [Sample characteristics](tables/summary_statistics.xlsx) | Household summary statistics, counts, and weighted shares. |
-| [Main regression](tables/regression_results.docx) | Household-weighted logistic estimates reported as odds ratios. |
+| [Main regression](tables/regression_results.docx) | Survey-weighted logistic estimates using household sampling weights, reported as odds ratios. |
 | [Final regression table](tables/CHE_final_regression_table.docx) | Baseline, province fixed effects, and the interaction between economic rank and residence. |
 | [Coefficient estimates](tables/regression_coefficients.csv) | Log-odds estimates, odds ratios, standard errors, and p-values across specifications. |
 | [Model comparison](tables/model_comparison.docx) | Baseline and urban-only specifications. |
