@@ -31,25 +31,25 @@ The main out-of-pocket measure includes purchased medical items (`DYCOL02 = 1)).
 
 Household size is adjusted using the equivalence scale:
 
-\[
+$
 \text{equivalence size}=\text{household size}^{0.56}.
-\]
+$
 
 The primary subsistence line is estimated separately for rural and urban households. It is the survey-weighted mean of equivalized food expenditure among households whose food-expenditure share is strictly between 45% and 55% of total expenditure. Household-specific subsistence expenditure is obtained by multiplying this line by the household equivalence size.
 
 Capacity to pay is total expenditure less the smaller of observed food expenditure and adjusted subsistence expenditure:
 
-\[
+$
 \text{capacity to pay}
 =\text{total expenditure}
 -\min(\text{food expenditure},\text{subsistence expenditure}).
-\]
+$
 
 A household is classified as facing catastrophic health expenditure when annual out-of-pocket medical expenditure is at least 40% of capacity to pay. The analysis also evaluates 30% and 50% thresholds. An alternative subsistence line uses the weighted mean of equivalized food expenditure among households between the 45th and 55th percentiles of total expenditure. [Xu et al. (2003)](https://doi.org/10.1016/S0140-6736(03)13861-5) · [Yazdi-Feyzabadi et al. (2018)](https://doi.org/10.1186/s12939-018-0743-y) · [Ghiasvand et al. (2015)](https://doi.org/10.5812/ircmj.30974)
 
 ## Empirical approach
 
-The baseline model is a household-weighted logistic regression of catastrophic health expenditure on economic rank, residence, household size, and the age, gender, and literacy of the household head. The estimates describe conditional associations, not causal effects.
+The baseline model is a survey-weighted logistic regression using household sampling weights of catastrophic health expenditure on economic rank, residence, household size, and the age, gender, and literacy of the household head. The estimates describe conditional associations, not causal effects.
 
 Additional specifications examine the urban subsample, province fixed effects, and the interaction between economic rank and residence. The analysis also estimates models at the 30% and 50% thresholds. For households with more than six members, case counts are reported by economic rank because some groups contain few or no catastrophic-expenditure cases.
 
